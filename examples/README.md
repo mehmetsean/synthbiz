@@ -2,7 +2,7 @@
 
 ## seed42-3m
 
-A small committed sample. It is synthetic data. License: CC BY 4.0.
+A small committed sample. It is synthetic data. All rights reserved, see LICENSE.
 
 Made with this exact command:
 

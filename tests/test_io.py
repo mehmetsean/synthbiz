@@ -62,7 +62,7 @@ def test_readme_text(tmp_path: Path) -> None:
         "business is unintended. Decision support only, not legal, tax, "
         "accounting or assurance advice. No guarantee of compliance."
     ) in text.splitlines()
-    assert "CC BY 4.0" in text
+    assert "All rights reserved." in text
 
 
 def test_no_long_dashes(tmp_path: Path) -> None:
