@@ -12,4 +12,4 @@ Every CSV file has a plain header row and nothing else above it. The synthetic n
 
 ## Consequences
 
-CSV files load in common tools such as spreadsheet programs and pandas. The notice travels with the folder, but not inside each file.
+CSV files have a plain header row and load with Python's csv module, which `synthbiz check` uses. The notice travels with the folder, but not inside each file.

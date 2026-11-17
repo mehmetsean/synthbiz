@@ -39,7 +39,7 @@ https://mehmetsean.github.io/synthbiz/
 
 The page runs the generator in your browser with Pyodide. Pick a seed, months, size and anomaly rate, see the check results and table previews, and download a zip. The page code is in `site/`.
 
-All data stays in your browser. The page downloads Pyodide, micropip and the Python standard library from cdn.jsdelivr.net, and wheel.json and the synthbiz wheel from this site. It does not send your inputs or the generated data anywhere. You can check this in the browser's Network tab.
+All data stays in your browser. The page downloads Pyodide, micropip, their dependencies and the Python standard library from cdn.jsdelivr.net, and wheel.json and the synthbiz wheel from this site. It does not send your inputs or the generated data anywhere. You can check this in the browser's Network tab.
 
 ## Tables
 
@@ -197,7 +197,7 @@ Checks:
 - dates: PASS
 - manifest: PASS
 
-manifest.json sha256: 32d0baa39754d204a88880b2743d671f227496b37517a300895de87959d1b955
+manifest.json sha256: 6bd1808509c85440738aa77827d3b141c8ed36ab86edd8f2c8b2b17803c82a85
 <!-- numbers:end -->
 
 See docs/spec.md for scope, DATA.md for data sources and docs/adr/ for design decisions.
@@ -207,6 +207,4 @@ See docs/spec.md for scope, DATA.md for data sources and docs/adr/ for design de
 Code: Apache-2.0, see `LICENSE`. Docs and generated data: CC BY 4.0,
 https://creativecommons.org/licenses/by/4.0/
 
-Synthetic data for testing and learning only. Any match with a real business is
-unintended. Decision support only, not legal, tax, accounting or assurance
-advice. No guarantee of compliance.
+Synthetic data for testing and learning only. Any match with a real business is unintended. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance.

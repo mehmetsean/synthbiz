@@ -45,8 +45,8 @@ v0.3: help-desk tickets linked to vendors, customers and assets (for triage-lab)
 Code Apache-2.0. Docs and the sample dataset CC BY 4.0. The chart of accounts and the name word lists are written for this repo. Any outside list (for example a holiday calendar) is recorded in DATA.md with its license.
 
 ## Liability notes
-- README.txt and data_dictionary.md in every output folder say "synthetic data", and schema.json and manifest.json set "synthetic": true. CSV files keep a plain header row so standard readers work. Company names are built from neutral word parts, and a note says any match with a real business is unintended.
+- README.txt and data_dictionary.md in every output folder say "synthetic data", and schema.json and manifest.json set "synthetic": true. CSV files keep a plain header row. `synthbiz check` reads them with Python's csv module. Company names are built from neutral word parts, and a note says any match with a real business is unintended.
 - No person names: users and approvers are role IDs such as AP_CLERK_1.
 - No real bank names, routing numbers, account numbers that pass checksum rules, or tax ID patterns.
 - No claim that the data matches real-world statistics.
-- For testing and learning only. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance.
+- Synthetic data for testing and learning only. Any match with a real business is unintended. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance.

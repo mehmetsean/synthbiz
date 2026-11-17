@@ -55,7 +55,11 @@ def test_readme_text(tmp_path: Path) -> None:
     text = (tmp_path / "README.txt").read_text()
     assert "synthetic data" in text.lower()
     assert "unintended" in text
-    assert "not legal, tax,\naccounting or assurance advice" in text
+    assert (
+        "Synthetic data for testing and learning only. Any match with a real "
+        "business is unintended. Decision support only, not legal, tax, "
+        "accounting or assurance advice. No guarantee of compliance."
+    ) in text.splitlines()
     assert "CC BY 4.0" in text
 
 
