@@ -1,0 +1,2 @@
+month_end,item_type,ref_type,ref_id,gl_date,bank_date,amount_cents
+2025-03-31,OUTSTANDING_PAYMENT,AP_PAYMENT,APP-000018,2025-03-31,2025-04-01,-121743

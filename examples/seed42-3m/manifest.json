@@ -1,0 +1,30 @@
+{
+  "synthetic": true,
+  "synthbiz_version": "0.1.0",
+  "company": "Westbrook Metalworks LLC",
+  "parameters": {
+    "seed": 42,
+    "months": 3,
+    "size": "small",
+    "anomaly_rate": 0.04,
+    "start_date": "2025-01-01",
+    "format": "csv"
+  },
+  "anomaly_count": 3,
+  "files": {
+    "README.txt": "e2fc97e2592ab7d87bc3902a69655e8c3c9d914ba831f04fe1479dd549796a12",
+    "ap_invoices.csv": "6a6cefec991ed013e6b431e1c454efc441082945f2f14c1a54ba41221f935966",
+    "ap_payments.csv": "f30b17875d26fbadca9c1dbc53f644812b091880018d10382a9591963995290b",
+    "ar_invoices.csv": "4fe946a38a58891f3e7e99f5bb82dc5d31248b8f3d73848296be479e4e27054e",
+    "ar_receipts.csv": "3d163bb8411f478c769ab591aa9d8798b42c4a35e28b6aabba597cf7f40d4875",
+    "bank_transactions.csv": "d5555713d777182627158fb29be78803969034d7629a87b135b274ef77541aac",
+    "chart_of_accounts.csv": "0b094d9087fb55c5ebad4efb1eb1dd5b76adfb8f9609c9010dc907fcdedc6245",
+    "customers.csv": "5ba5452e677d2abba18d9d75443bdbdf8fc1a5c2796dea4ef6f4a93c5830bd5b",
+    "data_dictionary.md": "dfe451e86609fd7a40d29a0e31455cd4db6356f9149018ef6755aa158a9b23d5",
+    "journal_lines.csv": "0c49d5515b2091285d152e19eb9afc1732ddf68c01161072dc77b3cb6a228145",
+    "labels.csv": "662b834a81d3a3317a891ea78f2f55975780575cfccf918a3f2969529cecfd5a",
+    "reconciling_items.csv": "ee3469e1199db03fcbea3a6a091d03f6239d135475674d8b6621909548c5b469",
+    "schema.json": "f93d4f510dbec49a7888c0393651b43f8fbfe2b6259a9ff54842c01ef55e6caf",
+    "vendors.csv": "66f0826c8c58c6190111f67d1560802015245030cce09624665c0820de337aae"
+  }
+}

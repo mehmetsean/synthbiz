@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+import synthbiz.io
 from synthbiz import __version__
 from synthbiz.check import run_checks
 from synthbiz.generate import Params, generate
@@ -54,7 +55,11 @@ def test_readme_text(tmp_path: Path) -> None:
     text = (tmp_path / "README.txt").read_text()
     assert "synthetic data" in text.lower()
     assert "unintended" in text
-    assert "not legal, tax,\naccounting or assurance advice" in text
+    assert (
+        "Synthetic data for testing and learning only. Any match with a real "
+        "business is unintended. Decision support only, not legal, tax, "
+        "accounting or assurance advice. No guarantee of compliance."
+    ) in text.splitlines()
     assert "CC BY 4.0" in text
 
 
@@ -173,3 +178,28 @@ def test_deeply_nested_manifest(tmp_path: Path) -> None:
     write_dataset(generate(PARAMS), tmp_path)
     (tmp_path / "manifest.json").write_text("[" * 100_000)
     assert verify_manifest(tmp_path) == ["manifest.json could not be read"]
+
+
+def test_manifest_name_outside_folder_is_not_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    folder = tmp_path / "data"
+    write_dataset(generate(PARAMS), folder)
+    secret = tmp_path / "outside.csv"
+    secret.write_text("secret content")
+    path = folder / "manifest.json"
+    m = json.loads(path.read_text())
+    m["files"]["../outside.csv"] = "0" * 64
+    path.write_text(json.dumps(m))
+    seen: list[str] = []
+    real = synthbiz.io._sha256
+
+    def spy(p: Path) -> str:
+        seen.append(p.name)
+        return real(p)
+
+    monkeypatch.setattr(synthbiz.io, "_sha256", spy)
+    errs = verify_manifest(folder)
+    assert errs == ["unexpected file name in manifest.json: '../outside.csv'"]
+    assert "outside.csv" not in seen
+    assert "secret content" not in str(errs)

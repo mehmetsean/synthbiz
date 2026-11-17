@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net 'wasm-unsafe-eval' 'unsafe-eval'; connect-src 'self' https://cdn.jsdelivr.net; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>synthbiz demo</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+<h1>synthbiz demo</h1>
+<p>Seeded synthetic finance data that reconciles, with labeled anomalies. The generator runs in your browser.</p>
+<p class="note">All data stays in your browser. The page downloads Pyodide, micropip, their dependencies and the Python standard library from cdn.jsdelivr.net, and wheel.json and the synthbiz wheel from this site. It does not send your inputs or the generated data anywhere. You can check this in the browser's Network tab.</p>
+
+<form id="form">
+<div class="field">
+<label for="seed">Seed</label>
+<input id="seed" type="number" min="0" step="1" value="42" required>
+</div>
+<div class="field">
+<label for="months">Months (1 to 24)</label>
+<input id="months" type="number" min="1" max="24" step="1" value="3" required>
+</div>
+<div class="field">
+<label for="size">Size</label>
+<select id="size">
+<option value="small">small</option>
+<option value="medium">medium</option>
+<option value="large">large</option>
+</select>
+</div>
+<div class="field">
+<label for="rate">Anomaly rate (0 to 0.2)</label>
+<input id="rate" type="number" min="0" max="0.2" step="0.01" value="0.05" required>
+</div>
+<div class="buttons">
+<button type="submit" id="generate" disabled>Generate</button>
+<button type="button" id="download" disabled>Download zip of last result</button>
+</div>
+</form>
+
+<p id="status" role="status" aria-live="polite">Loading Pyodide.</p>
+
+<section id="results" hidden>
+<h2>Consistency checks on the generated data</h2>
+<ul id="checks"></ul>
+<h2 id="labels-title">Labels</h2>
+<div id="labels"></div>
+<h2>Table previews</h2>
+<div id="tables"></div>
+</section>
+</main>
+<footer>
+<p>This page loads Pyodide (MPL-2.0) and micropip (MPL-2.0) from cdn.jsdelivr.net at runtime. They are not bundled in this repo.</p>
+<p>Synthetic data for testing and learning only. Any match with a real business is unintended. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance.</p>
+<p><a href="https://github.com/mehmetsean/synthbiz">Source code on GitHub</a></p>
+</footer>
+<script src="https://cdn.jsdelivr.net/pyodide/v314.0.8/full/pyodide.js" integrity="sha384-0Tw0jFeRF+UzB1HbzjzDi5ZNMyMclQPHmYkEquv9V+lAj/rZBHxu1c35Uq28kDPo" crossorigin="anonymous"></script>
+<script src="app.js"></script>
+</body>
+</html>

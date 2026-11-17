@@ -20,11 +20,14 @@ company, a public dataset or an outside list.
 - No real bank names, routing numbers, account numbers or tax ID patterns.
 - No claim that amounts, timing or anomaly rates match real-world statistics.
 
+## Runtime dependencies
+
+The demo page loads Pyodide (MPL-2.0) and micropip (MPL-2.0) from cdn.jsdelivr.net at runtime. They are not bundled in this repo.
+
 ## Licenses
 
 - Code: Apache-2.0, see `LICENSE`.
 - Generated sample data and the docs: CC BY 4.0,
   https://creativecommons.org/licenses/by/4.0/
 
-The data is synthetic. It is for testing and learning only. Decision support
-only, not legal, tax, accounting or assurance advice. No guarantee of compliance.
+Synthetic data for testing and learning only. Any match with a real business is unintended. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance.

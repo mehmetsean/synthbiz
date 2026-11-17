@@ -4,6 +4,7 @@ from typing import Any
 
 Col = tuple[str, str, str]
 
+DISCLAIMER = "Synthetic data for testing and learning only. Any match with a real business is unintended. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance."
 LABEL_COLUMNS = ["table", "row_id", "anomaly_type", "details"]
 
 _TABLES: dict[str, dict[str, Any]] = {
@@ -242,9 +243,7 @@ def data_dictionary(schema: dict[str, Any]) -> str:
     lines = [
         "# Data dictionary",
         "",
-        "Synthetic data from synthbiz. Any match with a real business is unintended.",
-        "For testing and learning only. Decision support only, not legal, tax,",
-        "accounting or assurance advice. No guarantee of compliance.",
+        DISCLAIMER,
         "",
         schema["amounts"],
         "",

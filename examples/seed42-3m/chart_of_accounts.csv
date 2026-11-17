@@ -1,0 +1,12 @@
+account_id,account_name,account_type,normal_balance,role
+1000,Operating Cash,ASSET,DEBIT,CASH
+1100,Accounts Receivable,ASSET,DEBIT,AR_CONTROL
+2000,Accounts Payable,LIABILITY,CREDIT,AP_CONTROL
+2100,Accrued Liabilities,LIABILITY,CREDIT,
+3000,Owner Equity,EQUITY,CREDIT,
+4000,Product Sales,REVENUE,CREDIT,
+5000,Raw Materials,EXPENSE,DEBIT,
+5100,Freight In,EXPENSE,DEBIT,
+6100,Utilities,EXPENSE,DEBIT,
+6200,Contract Services,EXPENSE,DEBIT,
+6900,Miscellaneous Expense,EXPENSE,DEBIT,

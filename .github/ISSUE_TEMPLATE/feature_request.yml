@@ -1,0 +1,22 @@
+name: Feature request
+description: Suggest one change
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What you need
+      description: Describe the problem, not only the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Idea
+      description: How could it work? Keep it to one feature.
+  - type: checkboxes
+    id: synthetic
+    attributes:
+      label: Data
+      options:
+        - label: This does not need real company data.
+          required: true
