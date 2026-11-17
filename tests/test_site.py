@@ -29,6 +29,18 @@ def test_app_uses_same_pyodide_version() -> None:
     assert page.group(0) == app.group(0)
 
 
+CSP = (
+    "default-src 'none'; "
+    "script-src 'self' https://cdn.jsdelivr.net 'wasm-unsafe-eval' 'unsafe-eval'; "
+    "connect-src 'self' https://cdn.jsdelivr.net; "
+    "style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'"
+)
+
+
+def test_csp_exact_string() -> None:
+    assert f'content="{CSP}"' in _html()
+
+
 def test_csp_meta_tag() -> None:
     html = _html()
     assert 'http-equiv="Content-Security-Policy"' in html

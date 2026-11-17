@@ -39,6 +39,8 @@ https://mehmetsean.github.io/synthbiz/
 
 The page runs the generator in your browser with Pyodide. Pick a seed, months, size and anomaly rate, see the check results and table previews, and download a zip. The page code is in `site/`.
 
+All data stays in your browser. The page downloads Pyodide, micropip and the Python standard library from cdn.jsdelivr.net, and wheel.json and the synthbiz wheel from this site. It does not send your inputs or the generated data anywhere. You can check this in the browser's Network tab.
+
 ## Tables
 
 Ten tables plus labels.csv. Keys come from `src/synthbiz/schema.py`.
@@ -114,7 +116,7 @@ erDiagram
     labels }o--|| journal_lines : row_id
 ```
 
-Labels point to a row by table name and row id, so the diagram line for labels shows one of the possible targets.
+A label points to one row by table name and row id. The diagram draws one of the possible targets.
 
 ## What check tests
 
