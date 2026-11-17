@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ## Unreleased
 
+Nothing yet.
+
+## 0.1.1 - 2026-11-17
+
 ### Changed
 
 - License changed to all rights reserved.
