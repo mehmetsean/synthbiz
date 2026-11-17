@@ -30,7 +30,7 @@ v0.3: help-desk tickets linked to vendors, customers and assets (for triage-lab)
 - No server or web app. The demo is a static page.
 
 ## Demo plan
-- A static GitHub Pages page runs the generator in the browser with Pyodide: choose seed, months and anomaly rate, preview tables, download a zip, see the `check` results. Pyodide is pinned to one version with a subresource integrity hash. Nothing leaves the browser. Check: after the page loads, the browser Network tab shows no requests carrying seed, table or output data.
+- A static GitHub Pages page runs the generator in the browser with Pyodide: choose seed, months and anomaly rate, preview tables, download a zip, see the `check` results. The pyodide.js script tag is pinned to one version with a subresource integrity hash. The files Pyodide loads after that are not covered by it, see docs/adr/0009. Nothing leaves the browser. Check: after the page loads, the browser Network tab shows no requests carrying seed, table or output data.
 - A small committed sample (seed 42, 3 months) under examples/ with its checksum.
 
 ## Test plan

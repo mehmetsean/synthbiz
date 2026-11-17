@@ -149,3 +149,145 @@ def test_module_entry_point(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(SystemExit) as e:
         runpy.run_module("synthbiz", run_name="__main__")
     assert e.value.code == 0
+
+
+def _cut_last_column(path: Path) -> None:
+    lines = path.read_text().splitlines()
+    path.write_text("\n".join(line.rsplit(",", 1)[0] for line in lines) + "\n")
+
+
+def test_check_malformed_table_reports_one_line(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gen(tmp_path)
+    capsys.readouterr()
+    _cut_last_column(tmp_path / "bank_transactions.csv")
+    assert main(["check", str(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert out.startswith("Error: bank_transactions.csv: columns do not match")
+    assert len(out.splitlines()) == 1
+    assert "Traceback" not in out
+
+
+def test_check_short_row_reports_one_line(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gen(tmp_path)
+    capsys.readouterr()
+    path = tmp_path / "journal_lines.csv"
+    lines = path.read_text().splitlines()
+    lines[2] = lines[2].split(",")[0]
+    path.write_text("\n".join(lines) + "\n")
+    assert main(["check", str(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert out.startswith("Error: journal_lines.csv: line 3 has 1 fields")
+    assert "Traceback" not in out
+
+
+def test_check_without_labels_skips_and_counts(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gen(tmp_path)
+    capsys.readouterr()
+    (tmp_path / "labels.csv").unlink()
+    (tmp_path / "manifest.json").unlink()
+    assert main(["check", str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert "SKIP labels (no labels.csv in the folder)" in out
+    assert "SKIP manifest" in out
+    assert out.strip().splitlines()[-1] == "All checks passed, 2 skipped"
+
+
+def test_check_without_labels_only(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gen(tmp_path)
+    capsys.readouterr()
+    (tmp_path / "labels.csv").unlink()
+    assert main(["check", str(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert "SKIP labels" in out
+    assert "labels.csv: listed in manifest.json but missing" in out
+
+
+def test_check_bad_value_reports_one_line(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gen(tmp_path)
+    capsys.readouterr()
+    (tmp_path / "manifest.json").unlink()
+    path = tmp_path / "bank_transactions.csv"
+    lines = path.read_text().splitlines()
+    cells = lines[1].split(",")
+    cells[2] = "abc"
+    lines[1] = ",".join(cells)
+    path.write_text("\n".join(lines) + "\n")
+    assert main(["check", str(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert out == (
+        "Error: bank_transactions.csv: line 2: amount_cents is not a valid integer\n"
+    )
+
+
+def test_check_without_labels_and_manifest_is_valid(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gen(tmp_path)
+    (tmp_path / "labels.csv").unlink()
+    (tmp_path / "manifest.json").unlink()
+    assert main(["check", str(tmp_path)]) == 0
+    capsys.readouterr()
+
+
+def test_check_internal_error_is_one_line(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    gen(tmp_path)
+    capsys.readouterr()
+
+    def boom(*args: object) -> None:
+        raise KeyError("ref_id")
+
+    monkeypatch.setattr("synthbiz.cli.run_checks", boom)
+    assert main(["check", str(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert out.startswith("Error: could not run the checks: KeyError")
+    assert len(out.splitlines()) == 1
+    assert "Traceback" not in out
+
+
+def test_check_without_labels_flags_planted_out_of_period(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    main(
+        ["generate", "--seed", "42", "--months", "12", "--anomaly-rate", "0.05"]
+        + ["--out", str(tmp_path)]
+    )
+    (tmp_path / "labels.csv").unlink()
+    (tmp_path / "manifest.json").unlink()
+    capsys.readouterr()
+    assert main(["check", str(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert "SKIP labels" in out
+    assert "FAIL dates" in out
+    assert "is not a labeled anomaly" in out
+
+
+def test_check_internal_error_escapes_message(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    gen(tmp_path)
+    capsys.readouterr()
+
+    def boom(*args: object) -> None:
+        raise KeyError("\x1b]0;x\x07")
+
+    monkeypatch.setattr("synthbiz.cli.run_checks", boom)
+    assert main(["check", str(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert "\x1b" not in out
+    assert out.startswith("Error: could not run the checks: ")

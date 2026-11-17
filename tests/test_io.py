@@ -1,5 +1,7 @@
 import hashlib
 import json
+import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -174,6 +176,18 @@ def test_manifest_names_must_be_known(tmp_path: Path) -> None:
     assert all(e.startswith("unexpected file name in manifest.json") for e in errs)
 
 
+def test_manifest_name_is_escaped_and_cut(tmp_path: Path) -> None:
+    write_dataset(generate(PARAMS), tmp_path)
+    path = tmp_path / "manifest.json"
+    m = json.loads(path.read_text())
+    m["files"]["evil\n\x1b]0;x\x07" + "z" * 5000] = "0" * 64
+    path.write_text(json.dumps(m))
+    errs = verify_manifest(tmp_path)
+    assert errs is not None and len(errs) == 1
+    assert "\x1b" not in errs[0] and "\n" not in errs[0] and "\x07" not in errs[0]
+    assert len(errs[0]) <= len("unexpected file name in manifest.json: ") + 80
+
+
 def test_deeply_nested_manifest(tmp_path: Path) -> None:
     write_dataset(generate(PARAMS), tmp_path)
     (tmp_path / "manifest.json").write_text("[" * 100_000)
@@ -203,3 +217,253 @@ def test_manifest_name_outside_folder_is_not_read(
     assert errs == ["unexpected file name in manifest.json: '../outside.csv'"]
     assert "outside.csv" not in seen
     assert "secret content" not in str(errs)
+
+
+def _edit(path: Path, fn: Callable[[list[str]], list[str]]) -> None:
+    lines = path.read_text().splitlines()
+    path.write_text("\n".join(fn(lines)) + "\n")
+
+
+def test_missing_column_rejected(tmp_path: Path) -> None:
+    write_dataset(generate(PARAMS), tmp_path)
+    _edit(
+        tmp_path / "bank_transactions.csv",
+        lambda ls: [line.rsplit(",", 1)[0] for line in ls],
+    )
+    with pytest.raises(ValueError, match="bank_transactions.csv: columns do not"):
+        read_dataset(tmp_path)
+
+
+def test_extra_column_rejected(tmp_path: Path) -> None:
+    write_dataset(generate(PARAMS), tmp_path)
+    _edit(tmp_path / "vendors.csv", lambda ls: [line + ",x" for line in ls])
+    with pytest.raises(ValueError, match="vendors.csv: columns do not"):
+        read_dataset(tmp_path)
+
+
+def test_short_row_rejected(tmp_path: Path) -> None:
+    write_dataset(generate(PARAMS), tmp_path)
+    _edit(
+        tmp_path / "journal_lines.csv",
+        lambda ls: [ls[0], ls[1].split(",")[0], *ls[2:]],
+    )
+    with pytest.raises(ValueError, match="journal_lines.csv: line 2 has 1 fields"):
+        read_dataset(tmp_path)
+
+
+def test_long_row_rejected(tmp_path: Path) -> None:
+    write_dataset(generate(PARAMS), tmp_path)
+    _edit(tmp_path / "vendors.csv", lambda ls: [*ls[:2], ls[2] + ",x", *ls[3:]])
+    with pytest.raises(ValueError, match="vendors.csv: line 3 has"):
+        read_dataset(tmp_path)
+
+
+def test_bad_labels_rejected(tmp_path: Path) -> None:
+    write_dataset(generate(PARAMS), tmp_path)
+    _edit(tmp_path / "labels.csv", lambda ls: ["table,row_id", *ls[1:]])
+    with pytest.raises(ValueError, match="labels.csv: columns do not"):
+        read_dataset(tmp_path)
+
+
+def test_empty_file_rejected(tmp_path: Path) -> None:
+    write_dataset(generate(PARAMS), tmp_path)
+    (tmp_path / "vendors.csv").write_text("")
+    with pytest.raises(ValueError, match="vendors.csv: file is empty"):
+        read_dataset(tmp_path)
+
+
+def _fresh(tmp_path: Path) -> Path:
+    write_dataset(generate(PARAMS), tmp_path)
+    return tmp_path
+
+
+def test_non_numeric_amount_rejected(tmp_path: Path) -> None:
+    _fresh(tmp_path)
+    path = tmp_path / "bank_transactions.csv"
+    lines = path.read_text().splitlines()
+    cells = lines[1].split(",")
+    cells[2] = "abc"
+    lines[1] = ",".join(cells)
+    path.write_text("\n".join(lines) + "\n")
+    with pytest.raises(ValueError) as e:
+        read_dataset(tmp_path)
+    assert str(e.value) == (
+        "bank_transactions.csv: line 2: amount_cents is not a valid integer"
+    )
+
+
+def test_bad_date_rejected(tmp_path: Path) -> None:
+    _fresh(tmp_path)
+    path = tmp_path / "bank_transactions.csv"
+    lines = path.read_text().splitlines()
+    cells = lines[1].split(",")
+    cells[1] = "2025-13-45"
+    lines[1] = ",".join(cells)
+    path.write_text("\n".join(lines) + "\n")
+    with pytest.raises(ValueError, match="line 2: bank_date is not a valid date"):
+        read_dataset(tmp_path)
+
+
+def test_huge_field_rejected(tmp_path: Path) -> None:
+    _fresh(tmp_path)
+    (tmp_path / "vendors.csv").write_text('a,b\n"' + "x" * 200000 + '",1\n')
+    with pytest.raises(ValueError, match="vendors.csv: not valid CSV"):
+        read_dataset(tmp_path)
+
+
+def test_not_utf8_rejected(tmp_path: Path) -> None:
+    _fresh(tmp_path)
+    (tmp_path / "vendors.csv").write_bytes(b"vendor_id\n\xff\xfe\n")
+    with pytest.raises(ValueError) as e:
+        read_dataset(tmp_path)
+    assert str(e.value) == "vendors.csv: not valid UTF-8"
+
+
+def test_bom_accepted(tmp_path: Path) -> None:
+    _fresh(tmp_path)
+    path = tmp_path / "vendors.csv"
+    path.write_bytes(b"\xef\xbb\xbf" + path.read_bytes())
+    tables, _ = read_dataset(tmp_path)
+    assert tables["vendors"]
+
+
+def test_header_is_not_echoed_raw(tmp_path: Path) -> None:
+    _fresh(tmp_path)
+    (tmp_path / "vendors.csv").write_text("\x1b[31m" + "h" * 5000 + "\n")
+    with pytest.raises(ValueError) as e:
+        read_dataset(tmp_path)
+    assert "\x1b" not in str(e.value)
+    assert len(str(e.value)) < 600
+
+
+def test_reordered_columns_rejected(tmp_path: Path) -> None:
+    _fresh(tmp_path)
+    path = tmp_path / "labels.csv"
+    _edit(path, lambda ls: ["row_id,table,anomaly_type,details", *ls[1:]])
+    with pytest.raises(ValueError, match="labels.csv: columns do not"):
+        read_dataset(tmp_path)
+
+
+def test_blank_middle_line_reports_physical_line(tmp_path: Path) -> None:
+    _fresh(tmp_path)
+    path = tmp_path / "vendors.csv"
+    _edit(path, lambda ls: [*ls[:3], "", *ls[3:]])
+    with pytest.raises(ValueError) as e:
+        read_dataset(tmp_path)
+    assert str(e.value) == "vendors.csv: line 4 is blank"
+
+
+def test_trailing_blank_lines_are_fine(tmp_path: Path) -> None:
+    _fresh(tmp_path)
+    path = tmp_path / "vendors.csv"
+    path.write_text(path.read_text() + "\n\n")
+    tables, _ = read_dataset(tmp_path)
+    assert tables["vendors"]
+
+
+def test_line_number_counts_physical_lines(tmp_path: Path) -> None:
+    _fresh(tmp_path)
+    path = tmp_path / "labels.csv"
+    path.write_text('table,row_id,anomaly_type,details\na,b,c,"x\ny\nz"\nshort\n')
+    with pytest.raises(ValueError, match="labels.csv: line 5 has 1 fields"):
+        read_dataset(tmp_path)
+
+
+def test_crlf_and_quoted_comma(tmp_path: Path) -> None:
+    _fresh(tmp_path)
+    path = tmp_path / "labels.csv"
+    path.write_bytes(b'table,row_id,anomaly_type,details\r\na,b,c,"x, y"\r\n')
+    _, labels = read_dataset(tmp_path)
+    assert labels == [
+        {"table": "a", "row_id": "b", "anomaly_type": "c", "details": "x, y"}
+    ]
+
+
+def test_header_only_file(tmp_path: Path) -> None:
+    _fresh(tmp_path)
+    path = tmp_path / "labels.csv"
+    path.write_text("table,row_id,anomaly_type,details\n")
+    assert read_dataset(tmp_path)[1] == []
+
+
+def test_directory_instead_of_file(tmp_path: Path) -> None:
+    _fresh(tmp_path)
+    (tmp_path / "vendors.csv").unlink()
+    (tmp_path / "vendors.csv").mkdir()
+    with pytest.raises(ValueError) as e:
+        read_dataset(tmp_path)
+    assert str(e.value).startswith("vendors.csv: could not read the file")
+    assert str(tmp_path) not in str(e.value)
+
+
+def test_parquet_without_pyarrow(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _fresh(tmp_path)
+    (tmp_path / "vendors.csv").unlink()
+    (tmp_path / "vendors.parquet").write_bytes(b"x")
+    monkeypatch.setitem(sys.modules, "pyarrow", None)
+    monkeypatch.setitem(sys.modules, "pyarrow.parquet", None)
+    with pytest.raises(ValueError, match="vendors.parquet: pyarrow is needed"):
+        read_dataset(tmp_path)
+
+
+def test_corrupt_parquet(tmp_path: Path) -> None:
+    pytest.importorskip("pyarrow")
+    _fresh(tmp_path)
+    (tmp_path / "vendors.csv").unlink()
+    (tmp_path / "vendors.parquet").write_bytes(b"junk bytes")
+    with pytest.raises(ValueError) as e:
+        read_dataset(tmp_path)
+    assert str(e.value) == "vendors.parquet: not a readable Parquet file"
+
+
+def test_parquet_column_mismatch(tmp_path: Path) -> None:
+    pq = pytest.importorskip("pyarrow.parquet")
+    pa = pytest.importorskip("pyarrow")
+    write_dataset(generate(PARAMS), tmp_path, "parquet")
+    pq.write_table(pa.table({"wrong": ["a"]}), tmp_path / "vendors.parquet")
+    with pytest.raises(ValueError, match="vendors.parquet: columns do not"):
+        read_dataset(tmp_path)
+
+
+def _parquet_with(tmp_path: Path, column: str, values: list[object]) -> None:
+    pa = pytest.importorskip("pyarrow")
+    pq = pytest.importorskip("pyarrow.parquet")
+    write_dataset(generate(PARAMS), tmp_path, "parquet")
+    path = tmp_path / "bank_transactions.parquet"
+    table = pq.read_table(path)
+    index = table.column_names.index(column)
+    values = values + [None] * (table.num_rows - len(values))
+    values = values[: table.num_rows]
+    table = table.set_column(index, column, pa.array(values))
+    pq.write_table(table, path)
+
+
+def test_parquet_string_in_integer_column(tmp_path: Path) -> None:
+    _parquet_with(tmp_path, "amount_cents", ["abc"])
+    with pytest.raises(ValueError) as e:
+        read_dataset(tmp_path)
+    assert str(e.value) == (
+        "bank_transactions.parquet: row 1: amount_cents is not a valid integer"
+    )
+
+
+def test_parquet_float_in_integer_column(tmp_path: Path) -> None:
+    _parquet_with(tmp_path, "amount_cents", [1.5])
+    with pytest.raises(ValueError, match="row 1: amount_cents is not a valid integer"):
+        read_dataset(tmp_path)
+
+
+def test_parquet_bad_date(tmp_path: Path) -> None:
+    _parquet_with(tmp_path, "bank_date", ["not-a-date"])
+    with pytest.raises(ValueError, match="row 1: bank_date is not a valid date"):
+        read_dataset(tmp_path)
+
+
+def test_bad_quoting_rejected(tmp_path: Path) -> None:
+    _fresh(tmp_path)
+    path = tmp_path / "labels.csv"
+    path.write_text('table,row_id,anomaly_type,details\na,b,c,"x"y\n')
+    with pytest.raises(ValueError, match="labels.csv: not valid CSV"):
+        read_dataset(tmp_path)

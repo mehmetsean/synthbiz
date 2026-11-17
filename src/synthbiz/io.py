@@ -153,7 +153,7 @@ def verify_manifest(folder: Path) -> list[str] | None:
     for name, digest in sorted(files.items()):
         f = folder / name
         if name not in allowed:
-            errors.append(f"unexpected file name in manifest.json: {name!r}")
+            errors.append(f"unexpected file name in manifest.json: {repr(name)[:80]}")
         elif not f.is_file():
             errors.append(f"{name}: listed in manifest.json but missing")
         elif _sha256(f) != digest:
@@ -164,22 +164,91 @@ def verify_manifest(folder: Path) -> list[str] | None:
     return errors
 
 
-def _read_csv(path: Path) -> list[dict[str, Any]]:
-    with path.open(newline="", encoding="utf-8") as f:
-        return [dict(r) for r in csv.DictReader(f)]
+def _bad_columns(name: str, expected: list[str], found: str) -> ValueError:
+    return ValueError(
+        f"{name}: columns do not match the schema, "
+        f"expected {','.join(expected)}, found {found[:200]}"
+    )
 
 
-def _read_parquet(path: Path) -> list[dict[str, Any]]:
-    import pyarrow.parquet as pq
+def _check_value(name: str, where: str, column: str, kind: str, value: str) -> None:
+    try:
+        if kind == "integer":
+            int(value)
+        elif kind == "date":
+            date.fromisoformat(value)
+    except ValueError:
+        raise ValueError(f"{name}: {where}: {column} is not a valid {kind}") from None
 
-    rows = pq.read_table(path).to_pylist()
-    return [
-        {
-            k: "" if v is None else v.isoformat() if isinstance(v, date) else str(v)
-            for k, v in r.items()
-        }
-        for r in rows
-    ]
+
+def _read_csv(
+    path: Path, expected: list[str], types: dict[str, str] | None = None
+) -> list[dict[str, Any]]:
+    name = path.name
+    records: list[tuple[int, list[str]]] = []
+    try:
+        with path.open(newline="", encoding="utf-8-sig") as f:
+            reader = csv.reader(f, strict=True)
+            for row in reader:
+                records.append((reader.line_num, row))
+    except UnicodeDecodeError:
+        raise ValueError(f"{name}: not valid UTF-8") from None
+    except csv.Error as e:
+        raise ValueError(f"{name}: not valid CSV, {e}") from None
+    except OSError as e:
+        raise ValueError(f"{name}: could not read the file ({e.strerror})") from None
+    while records and not records[-1][1]:
+        records.pop()
+    if not records:
+        raise ValueError(f"{name}: file is empty")
+    header = records[0][1]
+    if header != expected:
+        raise _bad_columns(name, expected, repr(",".join(header)))
+    out: list[dict[str, Any]] = []
+    for number, row in records[1:]:
+        if not row:
+            raise ValueError(f"{name}: line {number} is blank")
+        if len(row) != len(expected):
+            raise ValueError(
+                f"{name}: line {number} has {len(row)} fields, expected {len(expected)}"
+            )
+        for column, value in zip(header, row, strict=True):
+            kind = (types or {}).get(column, "string")
+            _check_value(name, f"line {number}", column, kind, value)
+        out.append(dict(zip(header, row, strict=True)))
+    return out
+
+
+def _read_parquet(
+    path: Path, expected: list[str], types: dict[str, str]
+) -> list[dict[str, Any]]:
+    try:
+        import pyarrow.parquet as pq
+    except ImportError:
+        raise ValueError(
+            f"{path.name}: pyarrow is needed to read Parquet files, "
+            "install synthbiz[parquet]"
+        ) from None
+    try:
+        table = pq.read_table(path)
+    except Exception:
+        raise ValueError(f"{path.name}: not a readable Parquet file") from None
+    if table.column_names != expected:
+        raise _bad_columns(path.name, expected, repr(",".join(table.column_names)))
+    out: list[dict[str, Any]] = []
+    for number, r in enumerate(table.to_pylist(), start=1):
+        row: dict[str, Any] = {}
+        for k, v in r.items():
+            text = "" if v is None else v.isoformat() if isinstance(v, date) else str(v)
+            _check_value(path.name, f"row {number}", k, types.get(k, "string"), text)
+            row[k] = text
+        out.append(row)
+    return out
+
+
+def _types(table: str) -> dict[str, str]:
+    cols = schema_dict()["tables"][table]["columns"]
+    return {c["name"]: c["type"] for c in cols}
 
 
 def read_dataset(
@@ -195,12 +264,11 @@ def read_dataset(
         if csv_path.exists() and pq_path.exists():
             raise ValueError(f"both {name}.csv and {name}.parquet are in {folder}")
         if csv_path.exists():
-            tables[name] = _read_csv(csv_path)
+            tables[name] = _read_csv(csv_path, columns(name), _types(name))
         elif pq_path.exists():
-            tables[name] = _read_parquet(pq_path)
+            tables[name] = _read_parquet(pq_path, columns(name), _types(name))
         else:
             raise FileNotFoundError(f"missing table file for {name} in {folder}")
-    labels = (
-        _read_csv(folder / "labels.csv") if (folder / "labels.csv").exists() else []
-    )
+    labels_path = folder / "labels.csv"
+    labels = _read_csv(labels_path, LABEL_COLUMNS) if labels_path.exists() else []
     return tables, labels
