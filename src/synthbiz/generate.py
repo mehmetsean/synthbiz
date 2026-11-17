@@ -8,7 +8,7 @@ from .anomalies import inject
 from .builder import Builder, Row, nonround
 from .check import month_ends_from_lines, reconciling_items
 from .dates import add_business_days, business_days, month_ends, next_business_day
-from .names import customer_names, vendor_names
+from .names import company_name, customer_names, vendor_names
 from .schema import TABLE_NAMES
 
 OPENING_CASH_CENTS = 100_000_000
@@ -47,6 +47,7 @@ class Dataset:
     tables: dict[str, list[Row]]
     labels: list[dict[str, str]]
     anomaly_count: int
+    company: str
 
 
 def _month_days(days: list[date], me: date) -> list[date]:
@@ -120,6 +121,7 @@ def generate(params: Params) -> Dataset:
     start = params.start_date
     end = month_ends(start, params.months)[-1]
     b = Builder(params.seed, start, end)
+    company = company_name(b.rng)
     for name in TABLE_NAMES:
         b.table(name)
     b.tables["chart_of_accounts"].extend(
@@ -175,4 +177,4 @@ def generate(params: Params) -> Dataset:
     _sort(b.tables)
     ends = month_ends_from_lines(b.tables["journal_lines"])
     b.tables["reconciling_items"] = reconciling_items(b.tables, ends)
-    return Dataset(params, b.tables, b.labels, anomaly_count)
+    return Dataset(params, b.tables, b.labels, anomaly_count, company)
