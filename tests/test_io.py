@@ -176,6 +176,18 @@ def test_manifest_names_must_be_known(tmp_path: Path) -> None:
     assert all(e.startswith("unexpected file name in manifest.json") for e in errs)
 
 
+def test_manifest_name_is_escaped_and_cut(tmp_path: Path) -> None:
+    write_dataset(generate(PARAMS), tmp_path)
+    path = tmp_path / "manifest.json"
+    m = json.loads(path.read_text())
+    m["files"]["evil\n\x1b]0;x\x07" + "z" * 5000] = "0" * 64
+    path.write_text(json.dumps(m))
+    errs = verify_manifest(tmp_path)
+    assert errs is not None and len(errs) == 1
+    assert "\x1b" not in errs[0] and "\n" not in errs[0] and "\x07" not in errs[0]
+    assert len(errs[0]) <= len("unexpected file name in manifest.json: ") + 80
+
+
 def test_deeply_nested_manifest(tmp_path: Path) -> None:
     write_dataset(generate(PARAMS), tmp_path)
     (tmp_path / "manifest.json").write_text("[" * 100_000)

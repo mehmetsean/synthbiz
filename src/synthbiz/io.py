@@ -153,7 +153,7 @@ def verify_manifest(folder: Path) -> list[str] | None:
     for name, digest in sorted(files.items()):
         f = folder / name
         if name not in allowed:
-            errors.append(f"unexpected file name in manifest.json: {name!r}")
+            errors.append(f"unexpected file name in manifest.json: {repr(name)[:80]}")
         elif not f.is_file():
             errors.append(f"{name}: listed in manifest.json but missing")
         elif _sha256(f) != digest:
