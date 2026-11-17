@@ -4,7 +4,11 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ## Unreleased
 
-Changes for v0.1.0, not yet released:
+Nothing yet.
+
+## 0.1.0 - 2026-11-17
+
+First release.
 
 ### Added
 
