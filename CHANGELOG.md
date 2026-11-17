@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ## Unreleased
 
+Nothing yet.
+
+## 0.1.1 - 2026-11-17
+
 ### Changed
 
 - License changed to all rights reserved.
@@ -20,6 +24,8 @@ All notable changes are listed here. The format follows Keep a Changelog.
 ### Added
 
 - The CodeQL workflow can be started by hand.
+- THIRD_PARTY_NOTICES.md lists the third-party parts and their licenses.
+- docs/adr/0010 records the license change. Release 0.1.0 keeps the license it was released with.
 
 ## 0.1.0 - 2026-11-17
 
