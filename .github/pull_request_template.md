@@ -8,4 +8,4 @@ One feature per pull request. Say what and why in a few lines.
 - [ ] `ruff check .`, `ruff format --check .`, `mypy --strict src` and `pytest` pass
 - [ ] `python scripts/reproduce_readme.py --check` passes
 - [ ] Synthetic data only
-- [ ] Commits are signed off (`git commit -s`)
+- [ ] Pull requests from contributors have a DCO sign-off on each commit (`git commit -s`)
