@@ -181,7 +181,7 @@ def _read_csv(path: Path, expected: list[str]) -> list[dict[str, Any]]:
                 f"{path.name}: line {number} has {len(row)} fields, "
                 f"expected {len(expected)}"
             )
-    return [dict(zip(header, row)) for row in lines[1:]]
+    return [dict(zip(header, row, strict=True)) for row in lines[1:]]
 
 
 def _read_parquet(path: Path, expected: list[str]) -> list[dict[str, Any]]:
