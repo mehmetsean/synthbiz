@@ -88,3 +88,44 @@ def test_pages_workflow_is_pinned_and_gated() -> None:
     for line in text.splitlines():
         if "uses:" in line:
             assert re.search(r"@[0-9a-f]{40} # v\d", line), line
+
+
+def test_no_inline_style_attributes() -> None:
+    assert not re.search(r"\sstyle=", _html())
+    js = (SITE / "app.js").read_text(encoding="utf-8")
+    assert "setAttribute(\"style\"" not in js
+    assert ".style." not in js
+
+
+FOOTER_SENTENCES = [
+    "This page loads Pyodide (MPL-2.0) and micropip (MPL-2.0) from cdn.jsdelivr.net at runtime. They are not bundled in this repo.",
+    "Synthetic data for testing and learning only. Any match with a real business is unintended. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance.",
+    "Copyright (c) 2026 Mehmet Tuzunkan. All rights reserved. You may view the code and run it to evaluate it. Commercial use needs a paid license from Mehmet Tuzunkan: https://www.linkedin.com/in/mstuzunkan",
+    "Source code on GitHub",
+]
+
+
+def test_footer_sentences_present() -> None:
+    footer = _html().split("<footer>")[1].split("</footer>")[0]
+    for sentence in FOOTER_SENTENCES:
+        assert sentence in footer
+
+
+def test_privacy_note_present() -> None:
+    assert "All data stays in your browser." in _html()
+    assert "You can check this in the browser's Network tab." in _html()
+
+
+def test_css_has_tokens_and_dark_theme() -> None:
+    css = (SITE / "style.css").read_text(encoding="utf-8")
+    assert "prefers-color-scheme: dark" in css
+    assert "prefers-reduced-motion" in css
+    assert ":focus-visible" in css
+    assert "--color-bg" in css and "--space-3" in css and "--radius" in css
+
+
+def test_chart_is_accessible_svg() -> None:
+    js = (SITE / "app.js").read_text(encoding="utf-8")
+    assert "createElementNS" in js
+    assert '"role", "img"' in js
+    assert '"title"' in js and '"desc"' in js
