@@ -1,7 +1,7 @@
 # synthbiz spec (v0.1 to v0.3)
 
 ## Problem
-People who build finance and operations analytics need test data that behaves like one company's books: linked tables that reconcile, with known problems planted in them. Real ledgers cannot be shared. Row-by-row fake-data libraries make independent rows, so an invoice never posts to the ledger and a payment never shows up on a bank statement. Fixed sample datasets cannot be resized or reseeded, and most have no labels, so nobody can measure whether a duplicate-payment check or a bank match actually works. Many small projects on GitHub write a one-off generator for this every time.
+People who build finance and operations analytics need test data that behaves like one company's books: linked tables that reconcile, with known problems planted in them. Real ledgers cannot be shared. Row-by-row fake-data libraries such as Faker make independent rows, so an invoice never posts to the ledger and a payment never shows up on a bank statement. Fixed sample datasets cannot be resized or reseeded, and most have no labels, so nobody can measure whether a duplicate-payment check or a bank match actually works.
 
 ## User
 - Data and analytics engineers who test finance pipelines, reconciliations and dashboards.
@@ -30,7 +30,7 @@ v0.3: help-desk tickets linked to vendors, customers and assets (for triage-lab)
 - No server or web app. The demo is a static page.
 
 ## Demo plan
-- A static GitHub Pages page runs the generator in the browser with Pyodide: choose seed, months and anomaly rate, preview tables, download a zip, see the `check` results. Nothing leaves the browser.
+- A static GitHub Pages page runs the generator in the browser with Pyodide: choose seed, months and anomaly rate, preview tables, download a zip, see the `check` results. Nothing leaves the browser. Check: after the page loads, the browser Network tab shows no requests carrying seed, table or output data.
 - A small committed sample (seed 42, 3 months) under examples/ with its checksum.
 
 ## Test plan
@@ -49,4 +49,4 @@ Code Apache-2.0. Docs and the sample dataset CC BY 4.0. The chart of accounts an
 - No person names: users and approvers are role IDs such as AP_CLERK_1.
 - No real bank names, routing numbers, account numbers that pass checksum rules, or tax ID patterns.
 - No claim that the data matches real-world statistics.
-- For testing and learning only. Not accounting, tax or assurance advice.
+- For testing and learning only. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance.
