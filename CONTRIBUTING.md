@@ -26,6 +26,6 @@ If you change generated output, update the README numbers with `python scripts/r
 - Write tests first for core logic.
 - Synthetic data only. Never add real company data, real names or real account numbers.
 - Plain, short English. No em-dash or en-dash characters.
-- Sign off every commit with `git commit -s`. This adds a Signed-off-by line that says you accept the Developer Certificate of Origin: https://developercertificate.org/
+- Pull requests from contributors need a DCO sign-off on each commit (`git commit -s`). This adds a Signed-off-by line that says you accept the Developer Certificate of Origin: https://developercertificate.org/
 
 Synthetic data for testing and learning only. Any match with a real business is unintended. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance.

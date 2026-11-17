@@ -10,6 +10,7 @@ Made with this exact command:
 
 The rate is 0.04 because it is the first rate in 0.01 steps (starting at 0.02)
 that plants at least three anomaly types.
+To check, run generate at 0.02, 0.03 and 0.04 and count the distinct anomaly_type values in labels.csv.
 
 Inside:
 

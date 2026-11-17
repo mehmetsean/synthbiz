@@ -4,7 +4,7 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ## Unreleased
 
-Contents of v0.1.0:
+Changes for v0.1.0, not yet released:
 
 ### Added
 
