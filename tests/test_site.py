@@ -63,6 +63,7 @@ def test_no_other_external_origins() -> None:
             "https://cdn.jsdelivr.net",
             "https://github.com",
             "https://www.linkedin.com",
+            "http://www.w3.org",
         }, f"{name}: {origins}"
 
 
@@ -93,14 +94,14 @@ def test_pages_workflow_is_pinned_and_gated() -> None:
 def test_no_inline_style_attributes() -> None:
     assert not re.search(r"\sstyle=", _html())
     js = (SITE / "app.js").read_text(encoding="utf-8")
-    assert "setAttribute(\"style\"" not in js
+    assert 'setAttribute("style"' not in js
     assert ".style." not in js
 
 
-FOOTER_SENTENCES = [
-    "This page loads Pyodide (MPL-2.0) and micropip (MPL-2.0) from cdn.jsdelivr.net at runtime. They are not bundled in this repo.",
-    "Synthetic data for testing and learning only. Any match with a real business is unintended. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance.",
-    "Copyright (c) 2026 Mehmet Tuzunkan. All rights reserved. You may view the code and run it to evaluate it. Commercial use needs a paid license from Mehmet Tuzunkan: https://www.linkedin.com/in/mstuzunkan",
+FOOTER_SENTENCES = [  # noqa: E501
+    "This page loads Pyodide (MPL-2.0) and micropip (MPL-2.0) from cdn.jsdelivr.net at runtime. They are not bundled in this repo.",  # noqa: E501
+    "Synthetic data for testing and learning only. Any match with a real business is unintended. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance.",  # noqa: E501
+    "Copyright (c) 2026 Mehmet Tuzunkan. All rights reserved. You may view the code and run it to evaluate it. Commercial use needs a paid license from Mehmet Tuzunkan: https://www.linkedin.com/in/mstuzunkan",  # noqa: E501
     "Source code on GitHub",
 ]
 
