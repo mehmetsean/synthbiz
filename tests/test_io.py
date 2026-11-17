@@ -61,8 +61,8 @@ def test_no_long_dashes(tmp_path: Path) -> None:
     write_dataset(generate(PARAMS), tmp_path)
     for f in tmp_path.iterdir():
         text = f.read_text()
-        assert "–" not in text
-        assert "—" not in text
+        assert chr(0x2013) not in text
+        assert chr(0x2014) not in text
 
 
 def test_deterministic_bytes(tmp_path: Path) -> None:
