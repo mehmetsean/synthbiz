@@ -102,3 +102,11 @@ def test_unknown_format(tmp_path: Path) -> None:
 def test_read_missing_folder(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         read_dataset(tmp_path)
+
+
+def test_golden_checksum_seed_42(tmp_path: Path) -> None:
+    ds = generate(Params(seed=42, months=3))
+    write_dataset(ds, tmp_path)
+    assert sha(tmp_path / "journal_lines.csv") == (
+        "5a93b15aa3e28d9158f1e0cadb32667d4ef59b91ab89e718cbe84d71f0a3c18c"
+    )

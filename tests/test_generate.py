@@ -120,3 +120,8 @@ def test_same_seed_same_data_different_seed_differs() -> None:
     c = generate(make(seed=8))
     assert a.tables == b.tables
     assert a.tables != c.tables
+
+
+def test_anomaly_rate_range() -> None:
+    with pytest.raises(ValueError):
+        generate(make(anomaly_rate=1.5))

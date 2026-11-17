@@ -115,6 +115,8 @@ def _sort(tables: dict[str, list[Row]]) -> None:
 def generate(params: Params) -> Dataset:
     if params.size not in SIZES:
         raise ValueError(f"size must be one of {sorted(SIZES)}")
+    if not 0 <= params.anomaly_rate <= 1:
+        raise ValueError("anomaly rate must be between 0 and 1")
     if params.months < 1:
         raise ValueError("months must be at least 1")
     size = SIZES[params.size]
