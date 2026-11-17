@@ -144,14 +144,17 @@ def verify_manifest(folder: Path) -> list[str] | None:
         return None
     try:
         files = json.loads(path.read_text("utf-8"))["files"]
-    except (ValueError, KeyError, TypeError):
+    except (ValueError, KeyError, TypeError, RecursionError, OSError):
         files = None
     if not isinstance(files, dict):
         return ["manifest.json could not be read"]
+    allowed = set(known_files())
     errors: list[str] = []
     for name, digest in sorted(files.items()):
         f = folder / name
-        if not f.is_file():
+        if name not in allowed:
+            errors.append(f"unexpected file name in manifest.json: {name!r}")
+        elif not f.is_file():
             errors.append(f"{name}: listed in manifest.json but missing")
         elif _sha256(f) != digest:
             errors.append(f"{name}: sha256 differs from manifest.json")

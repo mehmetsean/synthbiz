@@ -35,11 +35,11 @@ def _check(args: argparse.Namespace) -> int:
     folder = Path(args.folder)
     try:
         tables, labels = read_dataset(folder)
+        manifest = verify_manifest(folder)
     except (ValueError, OSError, KeyError) as e:
         print(f"Error: {e}")
         return 1
     results = run_checks(tables, labels)
-    manifest = verify_manifest(folder)
     if manifest is None:
         print("SKIP manifest (no manifest.json in the folder)")
     else:

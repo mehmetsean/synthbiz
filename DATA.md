@@ -6,8 +6,8 @@ company, a public dataset or an outside list.
 ## What is written for this repo
 
 - Word lists for company, vendor and customer names: `src/synthbiz/names.py`.
-  They are neutral words (place, material and trade words). The generated names
-  are generic, and no trademark or business registry search was done on them.
+  They are neutral words (place, material and trade words). Names are built by
+  joining these words, so a generated name can match a real business by chance.
   Any match with a real business is unintended.
 - Chart of accounts, vendor categories and role IDs (for example AP_CLERK_1,
   AP_MANAGER_1): `src/synthbiz/builder.py`. No person names are used anywhere.

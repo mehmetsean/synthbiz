@@ -155,3 +155,21 @@ def test_read_refuses_two_formats(tmp_path: Path) -> None:
     (tmp_path / "vendors.parquet").write_text("x")
     with pytest.raises(ValueError, match="both vendors.csv and vendors.parquet"):
         read_dataset(tmp_path)
+
+
+def test_manifest_names_must_be_known(tmp_path: Path) -> None:
+    write_dataset(generate(PARAMS), tmp_path)
+    path = tmp_path / "manifest.json"
+    m = json.loads(path.read_text())
+    m["files"]["../outside.txt"] = "0" * 64
+    m["files"][str(tmp_path.parent / "abs.txt")] = "0" * 64
+    path.write_text(json.dumps(m))
+    errs = verify_manifest(tmp_path)
+    assert errs is not None and len(errs) == 2
+    assert all(e.startswith("unexpected file name in manifest.json") for e in errs)
+
+
+def test_deeply_nested_manifest(tmp_path: Path) -> None:
+    write_dataset(generate(PARAMS), tmp_path)
+    (tmp_path / "manifest.json").write_text("[" * 100_000)
+    assert verify_manifest(tmp_path) == ["manifest.json could not be read"]
