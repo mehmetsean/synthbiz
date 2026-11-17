@@ -164,15 +164,36 @@ def verify_manifest(folder: Path) -> list[str] | None:
     return errors
 
 
-def _read_csv(path: Path) -> list[dict[str, Any]]:
+def _read_csv(path: Path, expected: list[str]) -> list[dict[str, Any]]:
     with path.open(newline="", encoding="utf-8") as f:
-        return [dict(r) for r in csv.DictReader(f)]
+        lines = [r for r in csv.reader(f) if r]
+    if not lines:
+        raise ValueError(f"{path.name}: file is empty")
+    header = lines[0]
+    if header != expected:
+        raise ValueError(
+            f"{path.name}: columns do not match the schema, "
+            f"expected {','.join(expected)} but found {','.join(header)}"
+        )
+    for number, row in enumerate(lines[1:], start=2):
+        if len(row) != len(expected):
+            raise ValueError(
+                f"{path.name}: line {number} has {len(row)} fields, "
+                f"expected {len(expected)}"
+            )
+    return [dict(zip(header, row)) for row in lines[1:]]
 
 
-def _read_parquet(path: Path) -> list[dict[str, Any]]:
+def _read_parquet(path: Path, expected: list[str]) -> list[dict[str, Any]]:
     import pyarrow.parquet as pq
 
-    rows = pq.read_table(path).to_pylist()
+    table = pq.read_table(path)
+    if table.column_names != expected:
+        raise ValueError(
+            f"{path.name}: columns do not match the schema, "
+            f"expected {','.join(expected)} but found {','.join(table.column_names)}"
+        )
+    rows = table.to_pylist()
     return [
         {
             k: "" if v is None else v.isoformat() if isinstance(v, date) else str(v)
@@ -195,12 +216,11 @@ def read_dataset(
         if csv_path.exists() and pq_path.exists():
             raise ValueError(f"both {name}.csv and {name}.parquet are in {folder}")
         if csv_path.exists():
-            tables[name] = _read_csv(csv_path)
+            tables[name] = _read_csv(csv_path, columns(name))
         elif pq_path.exists():
-            tables[name] = _read_parquet(pq_path)
+            tables[name] = _read_parquet(pq_path, columns(name))
         else:
             raise FileNotFoundError(f"missing table file for {name} in {folder}")
-    labels = (
-        _read_csv(folder / "labels.csv") if (folder / "labels.csv").exists() else []
-    )
+    labels_path = folder / "labels.csv"
+    labels = _read_csv(labels_path, LABEL_COLUMNS) if labels_path.exists() else []
     return tables, labels

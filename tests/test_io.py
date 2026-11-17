@@ -203,3 +203,56 @@ def test_manifest_name_outside_folder_is_not_read(
     assert errs == ["unexpected file name in manifest.json: '../outside.csv'"]
     assert "outside.csv" not in seen
     assert "secret content" not in str(errs)
+
+
+def _edit(path: Path, fn) -> None:  # type: ignore[no-untyped-def]
+    lines = path.read_text().splitlines()
+    path.write_text("\n".join(fn(lines)) + "\n")
+
+
+def test_missing_column_rejected(tmp_path: Path) -> None:
+    write_dataset(generate(PARAMS), tmp_path)
+    _edit(
+        tmp_path / "bank_transactions.csv",
+        lambda ls: [line.rsplit(",", 1)[0] for line in ls],
+    )
+    with pytest.raises(ValueError, match="bank_transactions.csv: columns do not"):
+        read_dataset(tmp_path)
+
+
+def test_extra_column_rejected(tmp_path: Path) -> None:
+    write_dataset(generate(PARAMS), tmp_path)
+    _edit(tmp_path / "vendors.csv", lambda ls: [line + ",x" for line in ls])
+    with pytest.raises(ValueError, match="vendors.csv: columns do not"):
+        read_dataset(tmp_path)
+
+
+def test_short_row_rejected(tmp_path: Path) -> None:
+    write_dataset(generate(PARAMS), tmp_path)
+    _edit(
+        tmp_path / "journal_lines.csv",
+        lambda ls: [ls[0], ls[1].split(",")[0], *ls[2:]],
+    )
+    with pytest.raises(ValueError, match="journal_lines.csv: line 2 has 1 fields"):
+        read_dataset(tmp_path)
+
+
+def test_long_row_rejected(tmp_path: Path) -> None:
+    write_dataset(generate(PARAMS), tmp_path)
+    _edit(tmp_path / "vendors.csv", lambda ls: [*ls[:2], ls[2] + ",x", *ls[3:]])
+    with pytest.raises(ValueError, match="vendors.csv: line 3 has"):
+        read_dataset(tmp_path)
+
+
+def test_bad_labels_rejected(tmp_path: Path) -> None:
+    write_dataset(generate(PARAMS), tmp_path)
+    _edit(tmp_path / "labels.csv", lambda ls: ["table,row_id", *ls[1:]])
+    with pytest.raises(ValueError, match="labels.csv: columns do not"):
+        read_dataset(tmp_path)
+
+
+def test_empty_file_rejected(tmp_path: Path) -> None:
+    write_dataset(generate(PARAMS), tmp_path)
+    (tmp_path / "vendors.csv").write_text("")
+    with pytest.raises(ValueError, match="vendors.csv: file is empty"):
+        read_dataset(tmp_path)
