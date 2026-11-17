@@ -4,7 +4,9 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ## Unreleased
 
-Nothing yet.
+### Changed
+
+- LICENSE now says that commercial use needs a paid license and how to buy one.
 
 ## 0.1.1 - 2026-11-17
 
