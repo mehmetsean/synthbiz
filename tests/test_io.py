@@ -447,3 +447,11 @@ def test_parquet_bad_date(tmp_path: Path) -> None:
     _parquet_with(tmp_path, "bank_date", ["not-a-date"])
     with pytest.raises(ValueError, match="row 1: bank_date is not a valid date"):
         read_dataset(tmp_path)
+
+
+def test_bad_quoting_rejected(tmp_path: Path) -> None:
+    _fresh(tmp_path)
+    path = tmp_path / "labels.csv"
+    path.write_text('table,row_id,anomaly_type,details\na,b,c,"x"y\n')
+    with pytest.raises(ValueError, match="labels.csv: not valid CSV"):
+        read_dataset(tmp_path)

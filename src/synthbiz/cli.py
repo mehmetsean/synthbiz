@@ -42,7 +42,8 @@ def _check(args: argparse.Namespace) -> int:
     try:
         results = run_checks(tables, labels)
     except (ValueError, KeyError, TypeError, IndexError) as e:
-        print(f"Error: could not run the checks: {type(e).__name__} {e}"[:200])
+        msg = f"{type(e).__name__} {e}"
+        print("Error: could not run the checks: " + ascii(msg)[1:-1][:200])
         return 1
     skipped = 0
     if not (folder / "labels.csv").exists():

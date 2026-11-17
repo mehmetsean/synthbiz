@@ -156,3 +156,17 @@ def test_period_must_match_unless_labeled() -> None:
         "anomaly_type": "out_of_period_entry",
     }
     assert check_dates(t, [label]) == []
+
+
+def test_messages_escape_data_values() -> None:
+    evil = "\x1b]0;x\x07"
+    ds = generate(Params(seed=3, months=2, size="small", anomaly_rate=0))
+    tables = copy.deepcopy(ds.tables)
+    tables["ap_invoices"][0]["vendor_id"] = evil
+    labels = [{"table": "vendors", "row_id": evil, "anomaly_type": "x", "details": ""}]
+    errors = check_links(tables, labels)
+    assert len(errors) == 2
+    for line in errors:
+        assert "\x1b" not in line
+        assert "\x07" not in line
+        assert "\\x1b" in line

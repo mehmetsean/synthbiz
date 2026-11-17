@@ -11,6 +11,11 @@ Tables = dict[str, list[dict[str, Any]]]
 Labels = list[dict[str, Any]]
 
 
+def _safe(value: object) -> str:
+    """Escape control and non-ASCII characters and cut long values."""
+    return ascii(str(value))[1:-1][:80]
+
+
 @dataclass
 class Result:
     rule: str
@@ -55,7 +60,7 @@ def check_balanced(tables: Tables) -> list[str]:
         je = str(r["je_id"])
         sums[je] = sums.get(je, 0) + int(r["debit_cents"]) - int(r["credit_cents"])
     return [
-        f"{je}: debits minus credits is {diff} cents"
+        f"{_safe(je)}: debits minus credits is {diff} cents"
         for je, diff in sorted(sums.items())
         if diff != 0
     ]
@@ -173,23 +178,26 @@ def check_links(tables: Tables, labels: Labels | None = None) -> list[str]:
             have = {str(r[other_col]) for r in tables[other]}
             for r in tables[name]:
                 if str(r[col]) not in have:
-                    errors.append(f"{name} {r[key]}: {col} {r[col]} not in {other}")
+                    errors.append(
+                        f"{name} {_safe(r[key])}: {col} {_safe(r[col])} not in {other}"
+                    )
     refs = {str(r["payment_id"]) for r in tables["ap_payments"]}
     refs |= {str(r["receipt_id"]) for r in tables["ar_receipts"]}
     refs |= {str(r["je_id"]) for r in tables["journal_lines"]}
     for b in tables["bank_transactions"]:
         if str(b["ref_id"]) not in refs:
             errors.append(
-                f"bank_transactions {b['bank_txn_id']}: ref {b['ref_id']} not found"
+                f"bank_transactions {_safe(b['bank_txn_id'])}: "
+                f"ref {_safe(b['ref_id'])} not found"
             )
     for lab in labels or []:
         table = str(lab["table"])
         if table not in schema or table == "labels":
-            errors.append(f"labels: unknown table {table}")
+            errors.append(f"labels: unknown table {_safe(table)}")
             continue
         key = schema[table]["primary_key"][0]
         if str(lab["row_id"]) not in {str(r[key]) for r in tables[table]}:
-            errors.append(f"labels: {table} {lab['row_id']} not found")
+            errors.append(f"labels: {table} {_safe(lab['row_id'])} not found")
     return errors
 
 
@@ -201,7 +209,10 @@ def _later_than_invoice(
     for r in tables[name]:
         inv = inv_dates.get(str(r["invoice_id"]))
         if inv is not None and str(r[day]) < inv:
-            out.append(f"{name} {r[key]}: {day} {r[day]} is before invoice date {inv}")
+            out.append(
+                f"{name} {_safe(r[key])}: {day} {_safe(r[day])} "
+                f"is before invoice date {_safe(inv)}"
+            )
     return out
 
 
@@ -211,8 +222,8 @@ def check_dates(tables: Tables, labels: Labels) -> list[str]:
         for r in tables[name]:
             if str(r["due_date"]) < str(r["invoice_date"]):
                 errors.append(
-                    f"{name} {r['invoice_id']}: due date {r['due_date']} "
-                    f"is before invoice date {r['invoice_date']}"
+                    f"{name} {_safe(r['invoice_id'])}: due date {_safe(r['due_date'])} "
+                    f"is before invoice date {_safe(r['invoice_date'])}"
                 )
     errors += _later_than_invoice(
         tables, "ap_payments", "payment_id", "payment_date", "ap_invoices"
@@ -233,8 +244,9 @@ def check_dates(tables: Tables, labels: Labels) -> list[str]:
         month = str(r["posting_date"])[:7]
         if str(r["period"]) != month and str(r["je_id"]) not in planted_jes:
             errors.append(
-                f"journal_lines {r['line_id']}: period {r['period']} does not match "
-                f"posting date {r['posting_date']} and is not a labeled anomaly"
+                f"journal_lines {_safe(r['line_id'])}: period {_safe(r['period'])} "
+                f"does not match posting date {_safe(r['posting_date'])} "
+                "and is not a labeled anomaly"
             )
     return errors
 

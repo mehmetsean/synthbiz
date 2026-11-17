@@ -188,7 +188,7 @@ def _read_csv(
     records: list[tuple[int, list[str]]] = []
     try:
         with path.open(newline="", encoding="utf-8-sig") as f:
-            reader = csv.reader(f)
+            reader = csv.reader(f, strict=True)
             for row in reader:
                 records.append((reader.line_num, row))
     except UnicodeDecodeError:
