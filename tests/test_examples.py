@@ -17,7 +17,12 @@ def test_example_is_current(tmp_path: Path) -> None:
     )
     assert code == 0
     fresh = sorted(p.name for p in out.iterdir())
-    assert fresh == sorted(p.name for p in EXAMPLE.iterdir())
+    committed = sorted(p.name for p in EXAMPLE.iterdir())
+    assert fresh == committed, (
+        f"File names differ. Missing: {sorted(set(fresh) - set(committed))}. "
+        f"Extra: {sorted(set(committed) - set(fresh))}. "
+        f"Regenerate with: {COMMAND}"
+    )
     for name in fresh:
         assert (out / name).read_bytes() == (EXAMPLE / name).read_bytes(), (
             f"{name} differs from the committed example. Regenerate it with: {COMMAND}"
