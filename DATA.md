@@ -6,8 +6,9 @@ company, a public dataset or an outside list.
 ## What is written for this repo
 
 - Word lists for company, vendor and customer names: `src/synthbiz/names.py`.
-  They are neutral words (place, material and trade words). Any match with a real
-  business is unintended.
+  They are neutral words (place, material and trade words). The generated names
+  are generic, and no trademark or business registry search was done on them.
+  Any match with a real business is unintended.
 - Chart of accounts, vendor categories and role IDs (for example AP_CLERK_1,
   AP_MANAGER_1): `src/synthbiz/builder.py`. No person names are used anywhere.
 - US federal holidays: computed by rule in `src/synthbiz/dates.py` (for example
@@ -22,7 +23,8 @@ company, a public dataset or an outside list.
 ## Licenses
 
 - Code: Apache-2.0, see `LICENSE`.
-- Generated sample data and the docs: CC BY 4.0.
+- Generated sample data and the docs: CC BY 4.0,
+  https://creativecommons.org/licenses/by/4.0/
 
-The data is synthetic. It is for testing and learning only, not accounting, tax
-or assurance advice.
+The data is synthetic. It is for testing and learning only. Decision support
+only, not legal, tax, accounting or assurance advice. No guarantee of compliance.

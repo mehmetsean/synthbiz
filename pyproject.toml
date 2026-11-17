@@ -23,6 +23,7 @@ packages = ["src/synthbiz"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "--cov=synthbiz --cov-report=term-missing --cov-fail-under=90"
 
 [tool.ruff]
 line-length = 88

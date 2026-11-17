@@ -27,7 +27,7 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: mypy --strict src
-      - run: pytest --cov=synthbiz --cov-report=term-missing --cov-fail-under=90
+      - run: pytest
       - run: python scripts/reproduce_readme.py --check
 
   ci:

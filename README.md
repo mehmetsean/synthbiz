@@ -15,6 +15,26 @@ test checks and matching tools. All data is synthetic.
 Parquet output needs the extra: `pip install "synthbiz[parquet]"`, then add
 `--format parquet`.
 
+`generate` stops if the output folder is not empty. Add `--force` to replace the
+synthbiz files in it; other files in the folder are left alone.
+
+## What check tests
+
+- balanced_entries: every journal entry has equal debits and credits.
+- ap_ar_subledger_ties: open AP and AR in the subledgers equal the control
+  accounts at each month end.
+- bank_ties_to_gl_cash: bank balance plus reconciling items equals GL cash at
+  each month end, and reconciling_items.csv matches.
+- links: every key in the schema points to a real row, and every label points to
+  a real row.
+- dates: due dates, payments and receipts are not before their invoice, and each
+  journal line's period matches its posting month unless it is a labeled
+  out_of_period_entry.
+- manifest: every file still has the sha256 recorded in manifest.json.
+
+Anomaly types are planted in a fixed rotation, so a low rate or a short run will
+not include all nine types. The example below has six.
+
 ## Numbers in this README
 
 Every number below comes from `python scripts/reproduce_readme.py`. Run it with
@@ -55,11 +75,19 @@ Checks:
 - ap_ar_subledger_ties: PASS
 - bank_ties_to_gl_cash: PASS
 - links: PASS
+- dates: PASS
+- manifest: PASS
 
-manifest.json sha256: 1f7810d81b57594c5209c75b0ee1e509d8a68023e00e50f37ee2ebc4a6f200f3
+manifest.json sha256: 32d0baa39754d204a88880b2743d671f227496b37517a300895de87959d1b955
 <!-- numbers:end -->
 
-See docs/spec.md for scope and DATA.md for data sources and licenses.
+See docs/spec.md for scope and DATA.md for data sources.
+
+## License
+
+Code: Apache-2.0, see `LICENSE`. Docs and generated data: CC BY 4.0,
+https://creativecommons.org/licenses/by/4.0/
 
 Synthetic data for testing and learning only. Any match with a real business is
-unintended. Not accounting, tax or assurance advice.
+unintended. Decision support only, not legal, tax, accounting or assurance
+advice. No guarantee of compliance.
