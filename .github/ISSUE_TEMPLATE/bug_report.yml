@@ -1,0 +1,28 @@
+name: Bug report
+description: Something is wrong or a check fails
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Say what you did and what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command and seed
+      description: The exact command, including seed, months, size and anomaly rate.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: synthbiz version and Python version
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: Paste the error or the failing check lines. Do not paste real company data.
