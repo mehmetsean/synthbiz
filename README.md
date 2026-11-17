@@ -143,7 +143,7 @@ Run these from the repo folder.
 - `pytest` runs the tests, including property tests across random seeds, and fails under 90 percent coverage.
 - `reproduce_readme.py --check` rebuilds every number in the block below and fails if the README is out of date.
 - `synthbiz check examples/seed42-3m` runs the checks on the committed sample. See `examples/README.md`.
-- To check the manifest hash by hand, run `shasum -a 256 data/manifest.json` after a generate. For the example below it must equal the sha256 at the end of the numbers block.
+- To check the manifest hash by hand, run the quickstart generate command (seed 42, 12 months, size small, rate 0.02), then `shasum -a 256 data/manifest.json`. It must equal the sha256 at the end of the numbers block. The 3 month sample in examples/ is a different run, so its hash is different.
 
 ## Limits
 
@@ -197,7 +197,7 @@ Checks:
 - dates: PASS
 - manifest: PASS
 
-manifest.json sha256: 6bd1808509c85440738aa77827d3b141c8ed36ab86edd8f2c8b2b17803c82a85
+manifest.json sha256: e097ae0fa389b4ccdf3abb2b19e3bcd8bf40862257fd904fc06339cf422ec768
 <!-- numbers:end -->
 
 See docs/spec.md for scope, DATA.md for data sources and docs/adr/ for design decisions.

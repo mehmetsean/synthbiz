@@ -10,7 +10,10 @@ Made with this exact command:
 
 The rate is 0.04 because it is the first rate in 0.01 steps (starting at 0.02)
 that plants at least three anomaly types.
-To check, run the command above with --anomaly-rate 0.02 and again with 0.03, each with a new --out folder, and count the distinct anomaly_type values in each labels.csv. You get 1 type at 0.02 and 2 types at 0.03.
+To check, run the command above with --anomaly-rate 0.02.
+Then run it again with 0.03, using a new --out folder each time.
+Count the distinct anomaly_type values in each labels.csv.
+You get 1 type at 0.02 and 2 types at 0.03.
 
 Inside:
 

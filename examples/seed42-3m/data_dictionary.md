@@ -1,6 +1,6 @@
 # Data dictionary
 
-Synthetic data from synthbiz. Synthetic data for testing and learning only. Any match with a real business is unintended. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance.
+Synthetic data for testing and learning only. Any match with a real business is unintended. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance.
 
 All amounts are integer cents.
 

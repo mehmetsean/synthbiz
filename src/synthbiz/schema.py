@@ -243,7 +243,7 @@ def data_dictionary(schema: dict[str, Any]) -> str:
     lines = [
         "# Data dictionary",
         "",
-        f"Synthetic data from synthbiz. {DISCLAIMER}",
+        DISCLAIMER,
         "",
         schema["amounts"],
         "",
