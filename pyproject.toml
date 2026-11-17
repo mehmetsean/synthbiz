@@ -13,7 +13,7 @@ dependencies = []
 
 [project.optional-dependencies]
 parquet = ["pyarrow>=15"]
-dev = ["pytest", "pytest-cov", "hypothesis", "ruff", "mypy", "pyarrow>=15"]
+dev = ["pytest", "pytest-cov", "hypothesis", "ruff", "mypy", "pyarrow>=15", "pyyaml"]
 
 [project.scripts]
 synthbiz = "synthbiz.cli:main"
