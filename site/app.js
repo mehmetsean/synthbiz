@@ -128,8 +128,10 @@ async function start() {
     await pyodide.loadPackage("micropip");
     const info = await (await fetch("wheel.json")).json();
     const wheel = new URL(info.wheel, document.baseURI).href;
-    const micropip = pyodide.pyimport("micropip");
-    await micropip.install(wheel, { deps: false });
+    pyodide.globals.set("wheel_url", wheel);
+    await pyodide.runPythonAsync(
+      "import micropip\nawait micropip.install(wheel_url, deps=False)"
+    );
     demo = pyodide.pyimport("synthbiz.demo");
     generateBtn.disabled = false;
     setStatus("Ready.");
