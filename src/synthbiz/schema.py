@@ -33,8 +33,16 @@ _TABLES: dict[str, dict[str, Any]] = {
             ("debit_cents", "integer", "Debit amount in cents."),
             ("credit_cents", "integer", "Credit amount in cents."),
             ("memo", "string", "Short description."),
-            ("source_type", "string", "OPENING, AP_INVOICE, AP_PAYMENT, AR_INVOICE, AR_RECEIPT or MANUAL."),
-            ("source_id", "string", "Id of the subledger row that posted here, empty for manual entries."),
+            (
+                "source_type",
+                "string",
+                "OPENING, AP_INVOICE, AP_PAYMENT, AR_INVOICE, AR_RECEIPT or MANUAL.",
+            ),
+            (
+                "source_id",
+                "string",
+                "Id of the subledger row that posted here, empty for manual entries.",
+            ),
             ("created_by", "string", "Role id of the poster."),
             ("approved_by", "string", "Role id of the approver, empty if none."),
         ],
@@ -144,9 +152,17 @@ _TABLES: dict[str, dict[str, Any]] = {
         "columns": [
             ("bank_txn_id", "string", "Bank line id."),
             ("bank_date", "date", "Date the item cleared the bank."),
-            ("amount_cents", "integer", "Signed amount in cents, negative for money out."),
+            (
+                "amount_cents",
+                "integer",
+                "Signed amount in cents, negative for money out.",
+            ),
             ("ref_type", "string", "AP_PAYMENT, AR_RECEIPT or OPENING."),
-            ("ref_id", "string", "Id of the payment or receipt it clears. For OPENING, the journal entry id."),
+            (
+                "ref_id",
+                "string",
+                "Id of the payment or receipt it clears. For OPENING, the journal entry id.",
+            ),
         ],
     },
     "reconciling_items": {
@@ -188,10 +204,26 @@ def schema_dict() -> dict[str, Any]:
         "primary_key": ["table", "row_id", "anomaly_type"],
         "foreign_keys": {},
         "columns": [
-            {"name": "table", "type": "string", "description": "Table holding the row."},
-            {"name": "row_id", "type": "string", "description": "Primary key of the labeled row."},
-            {"name": "anomaly_type", "type": "string", "description": "Kind of anomaly."},
-            {"name": "details", "type": "string", "description": "Short plain description."},
+            {
+                "name": "table",
+                "type": "string",
+                "description": "Table holding the row.",
+            },
+            {
+                "name": "row_id",
+                "type": "string",
+                "description": "Primary key of the labeled row.",
+            },
+            {
+                "name": "anomaly_type",
+                "type": "string",
+                "description": "Kind of anomaly.",
+            },
+            {
+                "name": "details",
+                "type": "string",
+                "description": "Short plain description.",
+            },
         ],
     }
     return {
