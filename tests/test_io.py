@@ -7,7 +7,7 @@ import pytest
 from synthbiz import __version__
 from synthbiz.check import run_checks
 from synthbiz.generate import Params, generate
-from synthbiz.io import read_dataset, write_dataset
+from synthbiz.io import read_dataset, verify_manifest, write_dataset
 from synthbiz.schema import TABLE_NAMES, columns
 
 PARAMS = Params(seed=11, months=2, size="small", anomaly_rate=0.1)
@@ -54,7 +54,8 @@ def test_readme_text(tmp_path: Path) -> None:
     text = (tmp_path / "README.txt").read_text()
     assert "synthetic data" in text.lower()
     assert "unintended" in text
-    assert "not accounting, tax or assurance advice" in text
+    assert "not legal, tax,\naccounting or assurance advice" in text
+    assert "CC BY 4.0" in text
 
 
 def test_no_long_dashes(tmp_path: Path) -> None:
@@ -81,7 +82,7 @@ def test_roundtrip_and_check(tmp_path: Path) -> None:
     tables, labels = read_dataset(tmp_path)
     assert len(labels) == ds.anomaly_count
     assert len(tables["journal_lines"]) == len(ds.tables["journal_lines"])
-    assert all(r.ok for r in run_checks(tables))
+    assert all(r.ok for r in run_checks(tables, labels))
 
 
 def test_parquet_roundtrip(tmp_path: Path) -> None:
@@ -90,8 +91,8 @@ def test_parquet_roundtrip(tmp_path: Path) -> None:
     assert (tmp_path / "vendors.parquet").exists()
     assert not (tmp_path / "vendors.csv").exists()
     assert (tmp_path / "labels.csv").exists()
-    tables, _ = read_dataset(tmp_path)
-    assert all(r.ok for r in run_checks(tables))
+    tables, labels = read_dataset(tmp_path)
+    assert all(r.ok for r in run_checks(tables, labels))
 
 
 def test_unknown_format(tmp_path: Path) -> None:
@@ -113,3 +114,44 @@ def test_golden_checksum_seed_42(tmp_path: Path) -> None:
     assert sha(tmp_path / "bank_transactions.csv") == (
         "5058b0f6ae6db056594cf3702181daa53437833a655023cff52e405d0a90dc64"
     )
+
+
+def test_manifest_lists_only_written_files(tmp_path: Path) -> None:
+    (tmp_path / "notes.txt").write_text("mine")
+    write_dataset(generate(PARAMS), tmp_path, force=True)
+    m = json.loads((tmp_path / "manifest.json").read_text())
+    assert "notes.txt" not in m["files"]
+    assert verify_manifest(tmp_path) == []
+
+
+def test_refuses_non_empty_folder(tmp_path: Path) -> None:
+    (tmp_path / "notes.txt").write_text("mine")
+    with pytest.raises(FileExistsError):
+        write_dataset(generate(PARAMS), tmp_path)
+
+
+def test_refuses_a_file_as_out(tmp_path: Path) -> None:
+    f = tmp_path / "file.txt"
+    f.write_text("x")
+    with pytest.raises(FileExistsError):
+        write_dataset(generate(PARAMS), f)
+
+
+def test_verify_manifest_cases(tmp_path: Path) -> None:
+    assert verify_manifest(tmp_path) is None
+    write_dataset(generate(PARAMS), tmp_path)
+    (tmp_path / "labels.csv").unlink()
+    (tmp_path / "vendors.parquet").write_text("x")
+    assert verify_manifest(tmp_path) == [
+        "labels.csv: listed in manifest.json but missing",
+        "vendors.parquet: in the folder but not in manifest.json",
+    ]
+    (tmp_path / "manifest.json").write_text("[]")
+    assert verify_manifest(tmp_path) == ["manifest.json could not be read"]
+
+
+def test_read_refuses_two_formats(tmp_path: Path) -> None:
+    write_dataset(generate(PARAMS), tmp_path)
+    (tmp_path / "vendors.parquet").write_text("x")
+    with pytest.raises(ValueError, match="both vendors.csv and vendors.parquet"):
+        read_dataset(tmp_path)

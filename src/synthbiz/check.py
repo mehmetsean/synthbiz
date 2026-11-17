@@ -5,8 +5,10 @@ from datetime import date
 from typing import Any
 
 from .dates import last_day_of_month
+from .schema import TABLE_NAMES, schema_dict
 
 Tables = dict[str, list[dict[str, Any]]]
+Labels = list[dict[str, Any]]
 
 
 @dataclass
@@ -161,38 +163,89 @@ def check_bank_tie(tables: Tables) -> list[str]:
     return errors
 
 
-def check_links(tables: Tables) -> list[str]:
+def check_links(tables: Tables, labels: Labels | None = None) -> list[str]:
     errors: list[str] = []
-    jes = {str(r["je_id"]) for r in tables["journal_lines"]}
-    for name, key in (
-        ("ap_invoices", "invoice_id"),
-        ("ap_payments", "payment_id"),
-        ("ar_invoices", "invoice_id"),
-        ("ar_receipts", "receipt_id"),
-    ):
-        for r in tables[name]:
-            if str(r["je_id"]) not in jes:
-                errors.append(f"{name} {r[key]}: journal entry {r['je_id']} not found")
+    schema = schema_dict()["tables"]
+    for name in TABLE_NAMES:
+        key = schema[name]["primary_key"][0]
+        for col, target in schema[name]["foreign_keys"].items():
+            other, other_col = target.split(".")
+            have = {str(r[other_col]) for r in tables[other]}
+            for r in tables[name]:
+                if str(r[col]) not in have:
+                    errors.append(f"{name} {r[key]}: {col} {r[col]} not in {other}")
     refs = {str(r["payment_id"]) for r in tables["ap_payments"]}
     refs |= {str(r["receipt_id"]) for r in tables["ar_receipts"]}
-    refs |= jes
+    refs |= {str(r["je_id"]) for r in tables["journal_lines"]}
     for b in tables["bank_transactions"]:
         if str(b["ref_id"]) not in refs:
             errors.append(
                 f"bank_transactions {b['bank_txn_id']}: ref {b['ref_id']} not found"
             )
+    for lab in labels or []:
+        table = str(lab["table"])
+        if table not in schema or table == "labels":
+            errors.append(f"labels: unknown table {table}")
+            continue
+        key = schema[table]["primary_key"][0]
+        if str(lab["row_id"]) not in {str(r[key]) for r in tables[table]}:
+            errors.append(f"labels: {table} {lab['row_id']} not found")
     return errors
 
 
-def run_checks(tables: Tables) -> list[Result]:
-    rules = [
-        ("balanced_entries", check_balanced),
-        ("ap_ar_subledger_ties", check_subledger_ties),
-        ("bank_ties_to_gl_cash", check_bank_tie),
-        ("links", check_links),
+def _later_than_invoice(
+    tables: Tables, name: str, key: str, day: str, invoices: str
+) -> list[str]:
+    inv_dates = {str(r["invoice_id"]): str(r["invoice_date"]) for r in tables[invoices]}
+    out: list[str] = []
+    for r in tables[name]:
+        inv = inv_dates.get(str(r["invoice_id"]))
+        if inv is not None and str(r[day]) < inv:
+            out.append(f"{name} {r[key]}: {day} {r[day]} is before invoice date {inv}")
+    return out
+
+
+def check_dates(tables: Tables, labels: Labels) -> list[str]:
+    errors: list[str] = []
+    for name in ("ap_invoices", "ar_invoices"):
+        for r in tables[name]:
+            if str(r["due_date"]) < str(r["invoice_date"]):
+                errors.append(
+                    f"{name} {r['invoice_id']}: due date {r['due_date']} "
+                    f"is before invoice date {r['invoice_date']}"
+                )
+    errors += _later_than_invoice(
+        tables, "ap_payments", "payment_id", "payment_date", "ap_invoices"
+    )
+    errors += _later_than_invoice(
+        tables, "ar_receipts", "receipt_id", "receipt_date", "ar_invoices"
+    )
+    planted = {
+        str(lab["row_id"])
+        for lab in labels
+        if lab["table"] == "journal_lines"
+        and lab["anomaly_type"] == "out_of_period_entry"
+    }
+    planted_jes = {
+        str(r["je_id"]) for r in tables["journal_lines"] if str(r["line_id"]) in planted
+    }
+    for r in tables["journal_lines"]:
+        month = str(r["posting_date"])[:7]
+        if str(r["period"]) != month and str(r["je_id"]) not in planted_jes:
+            errors.append(
+                f"journal_lines {r['line_id']}: period {r['period']} does not match "
+                f"posting date {r['posting_date']} and is not a labeled anomaly"
+            )
+    return errors
+
+
+def run_checks(tables: Tables, labels: Labels) -> list[Result]:
+    """Run every rule. Labels mark planted out-of-period entries."""
+    found = [
+        ("balanced_entries", check_balanced(tables)),
+        ("ap_ar_subledger_ties", check_subledger_ties(tables)),
+        ("bank_ties_to_gl_cash", check_bank_tie(tables)),
+        ("links", check_links(tables, labels)),
+        ("dates", check_dates(tables, labels)),
     ]
-    results = []
-    for name, fn in rules:
-        errs = fn(tables)
-        results.append(Result(name, not errs, errs))
-    return results
+    return [Result(name, not errs, errs) for name, errs in found]

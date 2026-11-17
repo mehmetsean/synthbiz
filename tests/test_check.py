@@ -4,6 +4,7 @@ from typing import Any
 from synthbiz.check import (
     check_balanced,
     check_bank_tie,
+    check_dates,
     check_links,
     check_subledger_ties,
     month_ends_from_lines,
@@ -21,12 +22,13 @@ def good() -> Tables:
 
 
 def test_good_data_passes_every_rule() -> None:
-    results = run_checks(good())
+    results = run_checks(good(), [])
     assert [r.rule for r in results] == [
         "balanced_entries",
         "ap_ar_subledger_ties",
         "bank_ties_to_gl_cash",
         "links",
+        "dates",
     ]
     assert all(r.ok for r in results), [r.messages for r in results]
 
@@ -96,5 +98,61 @@ def test_links_fail_on_missing_entry() -> None:
 def test_run_checks_reports_failures() -> None:
     t = good()
     t["journal_lines"][0]["credit_cents"] += 1
-    results = run_checks(t)
+    results = run_checks(t, [])
     assert not results[0].ok
+
+
+def test_links_catch_every_missing_key() -> None:
+    t = good()
+    t["ap_invoices"][0]["vendor_id"] = "V-9999"
+    t["ap_payments"][0]["invoice_id"] = "API-999999"
+    t["ar_receipts"][0]["customer_id"] = "C-9999"
+    t["journal_lines"][0]["account_id"] = "3100"
+    errs = check_links(t)
+    assert len(errs) == 4
+    assert any("V-9999 not in vendors" in e for e in errs)
+    assert any("3100 not in chart_of_accounts" in e for e in errs)
+
+
+def test_labels_must_point_to_rows() -> None:
+    t = good()
+    labels = [
+        {"table": "ap_payments", "row_id": "APP-999999", "anomaly_type": "x"},
+        {"table": "nope", "row_id": "1", "anomaly_type": "x"},
+    ]
+    errs = check_links(t, labels)
+    assert errs == [
+        "labels: ap_payments APP-999999 not found",
+        "labels: unknown table nope",
+    ]
+
+
+def test_due_date_before_invoice_date_fails() -> None:
+    t = good()
+    t["ap_invoices"][0]["due_date"] = "2000-01-01"
+    errs = check_dates(t, [])
+    assert len(errs) == 1
+    assert "due date 2000-01-01" in errs[0]
+
+
+def test_payment_before_invoice_fails() -> None:
+    t = good()
+    t["ar_receipts"][0]["receipt_date"] = "2000-01-01"
+    errs = check_dates(t, [])
+    assert len(errs) == 1
+    assert "before invoice date" in errs[0]
+
+
+def test_period_must_match_unless_labeled() -> None:
+    t = good()
+    line = next(r for r in t["journal_lines"] if r["source_type"] == "MANUAL")
+    for r in t["journal_lines"]:
+        if r["je_id"] == line["je_id"]:
+            r["period"] = "1999-01"
+    assert len(check_dates(t, [])) == 2
+    label = {
+        "table": "journal_lines",
+        "row_id": line["line_id"],
+        "anomaly_type": "out_of_period_entry",
+    }
+    assert check_dates(t, [label]) == []

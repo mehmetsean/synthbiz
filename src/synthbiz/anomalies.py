@@ -124,30 +124,30 @@ def _journal_anomaly(
     rng = b.rng
     d = rng.choice(work)
     amount = nonround(rng.randint(5_000, 300_000))
-    note = "Manual entry"
+    note = "Manual accrual"
     created_by: str | None = None
     approved_by: str | None = "CONTROLLER_1"
     period: str | None = None
     if kind == "round_amount_entry":
         amount = rng.randint(1, 50) * 100_000
-        note = f"Manual entry of exactly {amount} cents"
+        note = f"Manual accrual of exactly {amount} cents"
     elif kind == "weekend_posting":
         d = rng.choice(weekend)
-        note = f"Manual entry posted on a {d.strftime('%A')}"
+        note = f"Manual accrual posted on a {d.strftime('%A')}"
     elif kind == "holiday_posting":
         d = rng.choice(holiday)
-        note = f"Manual entry posted on {holidays(d.year)[d]}"
+        note = f"Manual accrual posted on {holidays(d.year)[d]}"
     elif kind == "unusual_user":
         created_by = rng.choice(UNUSUAL_USERS)
-        note = f"Manual entry posted by {created_by}, not a usual poster"
+        note = f"Manual accrual posted by {created_by}, not a usual poster"
     elif kind == "missing_approval":
         approved_by = None
-        note = "Manual entry with no approver"
+        note = "Manual accrual with no approver"
     else:
         month = d.month - 1 or 12
         year = d.year if d.month > 1 else d.year - 1
         period = f"{year}-{month:02d}"
-        note = f"Manual entry posted {d.isoformat()} to period {period}"
+        note = f"Manual accrual posted {d.isoformat()} to period {period}"
     je_id, line_id = b.manual_entry(
         d,
         amount,

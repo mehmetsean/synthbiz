@@ -124,6 +124,11 @@ def generate(params: Params) -> Dataset:
     size = SIZES[params.size]
     start = params.start_date
     end = month_ends(start, params.months)[-1]
+    if not business_days(start, end):
+        raise ValueError(
+            f"no business day between {start} and {end}, "
+            "use an earlier start date or more months"
+        )
     b = Builder(params.seed, start, end)
     company = company_name(b.rng)
     for name in TABLE_NAMES:

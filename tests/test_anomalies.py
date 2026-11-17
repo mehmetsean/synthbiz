@@ -57,7 +57,7 @@ def test_every_type_appears() -> None:
 
 def test_checks_still_pass_with_anomalies() -> None:
     ds = make()
-    for r in run_checks(ds.tables):
+    for r in run_checks(ds.tables, ds.labels):
         assert r.ok, r.messages
 
 
@@ -141,5 +141,5 @@ def test_no_holiday_type_when_range_has_no_holiday() -> None:
     ds = make(rate=0.5, months=1, start=date(2025, 3, 1))
     assert len(ds.labels) == ds.anomaly_count > 0
     assert by_type(ds, "holiday_posting") == []
-    for r in run_checks(ds.tables):
+    for r in run_checks(ds.tables, ds.labels):
         assert r.ok

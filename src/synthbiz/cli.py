@@ -4,9 +4,9 @@ import argparse
 from datetime import date
 from pathlib import Path
 
-from .check import run_checks
+from .check import Result, run_checks
 from .generate import SIZES, Params, generate
-from .io import FORMATS, read_dataset, write_dataset
+from .io import FORMATS, read_dataset, verify_manifest, write_dataset
 
 MAX_SHOWN = 5
 
@@ -21,10 +21,10 @@ def _generate(args: argparse.Namespace) -> int:
     )
     try:
         ds = generate(params)
-    except ValueError as e:
+        write_dataset(ds, Path(args.out), args.format, args.force)
+    except (ValueError, OSError) as e:
         print(f"Error: {e}")
         return 1
-    write_dataset(ds, Path(args.out), args.format)
     rows = sum(len(t) for t in ds.tables.values())
     print(f"Wrote {len(ds.tables)} tables ({rows} rows) to {args.out}")
     print(f"Planted {ds.anomaly_count} anomalies, listed in labels.csv")
@@ -32,13 +32,20 @@ def _generate(args: argparse.Namespace) -> int:
 
 
 def _check(args: argparse.Namespace) -> int:
+    folder = Path(args.folder)
     try:
-        tables, _ = read_dataset(Path(args.folder))
-    except FileNotFoundError as e:
+        tables, labels = read_dataset(folder)
+    except (ValueError, OSError, KeyError) as e:
         print(f"Error: {e}")
         return 1
+    results = run_checks(tables, labels)
+    manifest = verify_manifest(folder)
+    if manifest is None:
+        print("SKIP manifest (no manifest.json in the folder)")
+    else:
+        results.append(Result("manifest", not manifest, manifest))
     failed = False
-    for r in run_checks(tables):
+    for r in results:
         print(f"{'PASS' if r.ok else 'FAIL'} {r.rule}")
         for m in r.messages[:MAX_SHOWN]:
             print(f"  {m}")
@@ -62,6 +69,11 @@ def main(argv: list[str] | None = None) -> int:
     g.add_argument("--start-date", type=date.fromisoformat, default=date(2025, 1, 1))
     g.add_argument("--format", choices=FORMATS, default="csv")
     g.add_argument("--out", required=True)
+    g.add_argument(
+        "--force",
+        action="store_true",
+        help="replace the synthbiz files in a folder that is not empty",
+    )
     g.set_defaults(func=_generate)
     c = sub.add_parser("check", help="run the tie-out checks on a dataset folder")
     c.add_argument("folder")

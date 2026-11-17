@@ -9,7 +9,7 @@ from pathlib import Path
 
 from synthbiz.check import run_checks
 from synthbiz.generate import Params, generate
-from synthbiz.io import read_dataset, write_dataset
+from synthbiz.io import read_dataset, verify_manifest, write_dataset
 
 START = "<!-- numbers:start -->"
 END = "<!-- numbers:end -->"
@@ -23,6 +23,7 @@ def build_block() -> str:
         out = Path(tmp)
         write_dataset(ds, out)
         tables, labels = read_dataset(out)
+        manifest_errors = verify_manifest(out)
         digest = hashlib.sha256((out / "manifest.json").read_bytes()).hexdigest()
     lines = ["Example: seed 42, 12 months, size small, anomaly rate 0.02.", ""]
     lines.append("Rows per table:")
@@ -38,9 +39,10 @@ def build_block() -> str:
     for kind in sorted(counts):
         lines.append(f"- {kind}: {counts[kind]}")
     lines += ["", "Checks:", ""]
-    for r in run_checks(tables):
+    for r in run_checks(tables, labels):
         status = "PASS" if r.ok else f"FAIL ({len(r.messages)} findings)"
         lines.append(f"- {r.rule}: {status}")
+    lines.append(f"- manifest: {'PASS' if manifest_errors == [] else 'FAIL'}")
     lines += ["", f"manifest.json sha256: {digest}"]
     return "\n".join(lines)
 

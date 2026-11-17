@@ -200,7 +200,12 @@ def schema_dict() -> dict[str, Any]:
             ],
         }
     tables["labels"] = {
-        "description": "One row per injected anomaly.",
+        "description": (
+            "One row per injected anomaly. Journal anomalies point to the first"
+            " line of the entry; every line with the same je_id is part of it."
+            " A split_invoice label points to the first invoice of the group and"
+            " lists the others in details."
+        ),
         "primary_key": ["table", "row_id", "anomaly_type"],
         "foreign_keys": {},
         "columns": [
@@ -238,7 +243,8 @@ def data_dictionary(schema: dict[str, Any]) -> str:
         "# Data dictionary",
         "",
         "Synthetic data from synthbiz. Any match with a real business is unintended.",
-        "For testing and learning only, not accounting, tax or assurance advice.",
+        "For testing and learning only. Decision support only, not legal, tax,",
+        "accounting or assurance advice. No guarantee of compliance.",
         "",
         schema["amounts"],
         "",
