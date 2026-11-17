@@ -4,6 +4,12 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ## Unreleased
 
+### Changed
+
+- License changed to all rights reserved.
+- CONTRIBUTING.md removed. Outside code contributions are not accepted.
+- README.txt in every generated folder now carries the copyright and license notice.
+
 ### Fixed
 
 - `synthbiz check` no longer crashes on a bad table file or labels.csv. For wrong or reordered columns, a wrong field count, a blank row, a value that is not an integer or a date, a file that is not UTF-8 or not valid CSV, a Parquet file with bad values, or an unreadable CSV or Parquet file, it prints one line naming the file and the problem, and exits with 1. A UTF-8 BOM is accepted.

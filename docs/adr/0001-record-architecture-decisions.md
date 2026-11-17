@@ -4,7 +4,7 @@ Status: Accepted
 
 ## Context
 
-Design choices are easy to forget. Readers and contributors need to know why the code works the way it does.
+Design choices are easy to forget. Readers need to know why the code works the way it does.
 
 ## Decision
 

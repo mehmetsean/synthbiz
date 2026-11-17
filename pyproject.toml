@@ -4,11 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "synthbiz"
-version = "0.1.0"
+version = "0.1.1"
 description = "Synthetic, reconciling finance data for one fictional small manufacturer, with labeled anomalies."
 readme = "README.md"
 requires-python = ">=3.11"
-license = "Apache-2.0"
+license = "LicenseRef-Proprietary"
+license-files = ["LICENSE"]
 dependencies = []
 
 [project.optional-dependencies]

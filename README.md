@@ -203,14 +203,19 @@ Checks:
 - dates: PASS
 - manifest: PASS
 
-manifest.json sha256: e097ae0fa389b4ccdf3abb2b19e3bcd8bf40862257fd904fc06339cf422ec768
+manifest.json sha256: cc88fd99f9de3b88d894554244da743c75837e45c4158bd6080a884aaa3ceabe
 <!-- numbers:end -->
 
 See docs/spec.md for scope, DATA.md for data sources and docs/adr/ for design decisions.
 
+## Contributing
+
+Outside code contributions are not accepted. Bug reports by issue are welcome.
+
 ## License
 
-Code: Apache-2.0, see `LICENSE`. Docs and generated data: CC BY 4.0,
-https://creativecommons.org/licenses/by/4.0/
+All rights reserved. You may view the code and run it to evaluate it. Commercial use needs a paid license from Mehmet Tuzunkan: https://www.linkedin.com/in/mstuzunkan
+
+Any other use needs written permission, except where LICENSE says otherwise. See LICENSE.
 
 Synthetic data for testing and learning only. Any match with a real business is unintended. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance.
