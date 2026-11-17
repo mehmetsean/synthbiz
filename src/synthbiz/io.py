@@ -171,16 +171,14 @@ def _bad_columns(name: str, expected: list[str], found: str) -> ValueError:
     )
 
 
-def _check_value(name: str, number: int, column: str, kind: str, value: str) -> None:
+def _check_value(name: str, where: str, column: str, kind: str, value: str) -> None:
     try:
         if kind == "integer":
             int(value)
         elif kind == "date":
             date.fromisoformat(value)
     except ValueError:
-        raise ValueError(
-            f"{name}: line {number}: {column} is not a valid {kind}"
-        ) from None
+        raise ValueError(f"{name}: {where}: {column} is not a valid {kind}") from None
 
 
 def _read_csv(
@@ -216,12 +214,14 @@ def _read_csv(
             )
         for column, value in zip(header, row, strict=True):
             kind = (types or {}).get(column, "string")
-            _check_value(name, number, column, kind, value)
+            _check_value(name, f"line {number}", column, kind, value)
         out.append(dict(zip(header, row, strict=True)))
     return out
 
 
-def _read_parquet(path: Path, expected: list[str]) -> list[dict[str, Any]]:
+def _read_parquet(
+    path: Path, expected: list[str], types: dict[str, str]
+) -> list[dict[str, Any]]:
     try:
         import pyarrow.parquet as pq
     except ImportError:
@@ -235,14 +235,15 @@ def _read_parquet(path: Path, expected: list[str]) -> list[dict[str, Any]]:
         raise ValueError(f"{path.name}: not a readable Parquet file") from None
     if table.column_names != expected:
         raise _bad_columns(path.name, expected, repr(",".join(table.column_names)))
-    rows = table.to_pylist()
-    return [
-        {
-            k: "" if v is None else v.isoformat() if isinstance(v, date) else str(v)
-            for k, v in r.items()
-        }
-        for r in rows
-    ]
+    out: list[dict[str, Any]] = []
+    for number, r in enumerate(table.to_pylist(), start=1):
+        row: dict[str, Any] = {}
+        for k, v in r.items():
+            text = "" if v is None else v.isoformat() if isinstance(v, date) else str(v)
+            _check_value(path.name, f"row {number}", k, types.get(k, "string"), text)
+            row[k] = text
+        out.append(row)
+    return out
 
 
 def _types(table: str) -> dict[str, str]:
@@ -265,7 +266,7 @@ def read_dataset(
         if csv_path.exists():
             tables[name] = _read_csv(csv_path, columns(name), _types(name))
         elif pq_path.exists():
-            tables[name] = _read_parquet(pq_path, columns(name))
+            tables[name] = _read_parquet(pq_path, columns(name), _types(name))
         else:
             raise FileNotFoundError(f"missing table file for {name} in {folder}")
     labels_path = folder / "labels.csv"

@@ -413,3 +413,37 @@ def test_parquet_column_mismatch(tmp_path: Path) -> None:
     pq.write_table(pa.table({"wrong": ["a"]}), tmp_path / "vendors.parquet")
     with pytest.raises(ValueError, match="vendors.parquet: columns do not"):
         read_dataset(tmp_path)
+
+
+def _parquet_with(tmp_path: Path, column: str, values: list[object]) -> None:
+    pa = pytest.importorskip("pyarrow")
+    pq = pytest.importorskip("pyarrow.parquet")
+    write_dataset(generate(PARAMS), tmp_path, "parquet")
+    path = tmp_path / "bank_transactions.parquet"
+    table = pq.read_table(path)
+    index = table.column_names.index(column)
+    values = values + [None] * (table.num_rows - len(values))
+    values = values[: table.num_rows]
+    table = table.set_column(index, column, pa.array(values))
+    pq.write_table(table, path)
+
+
+def test_parquet_string_in_integer_column(tmp_path: Path) -> None:
+    _parquet_with(tmp_path, "amount_cents", ["abc"])
+    with pytest.raises(ValueError) as e:
+        read_dataset(tmp_path)
+    assert str(e.value) == (
+        "bank_transactions.parquet: row 1: amount_cents is not a valid integer"
+    )
+
+
+def test_parquet_float_in_integer_column(tmp_path: Path) -> None:
+    _parquet_with(tmp_path, "amount_cents", [1.5])
+    with pytest.raises(ValueError, match="row 1: amount_cents is not a valid integer"):
+        read_dataset(tmp_path)
+
+
+def test_parquet_bad_date(tmp_path: Path) -> None:
+    _parquet_with(tmp_path, "bank_date", ["not-a-date"])
+    with pytest.raises(ValueError, match="row 1: bank_date is not a valid date"):
+        read_dataset(tmp_path)

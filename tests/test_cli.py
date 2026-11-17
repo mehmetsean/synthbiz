@@ -237,3 +237,39 @@ def test_check_without_labels_and_manifest_is_valid(
     (tmp_path / "manifest.json").unlink()
     assert main(["check", str(tmp_path)]) == 0
     capsys.readouterr()
+
+
+def test_check_internal_error_is_one_line(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    gen(tmp_path)
+    capsys.readouterr()
+
+    def boom(*args: object) -> None:
+        raise KeyError("ref_id")
+
+    monkeypatch.setattr("synthbiz.cli.run_checks", boom)
+    assert main(["check", str(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert out.startswith("Error: could not run the checks: KeyError")
+    assert len(out.splitlines()) == 1
+    assert "Traceback" not in out
+
+
+def test_check_without_labels_flags_planted_out_of_period(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    main(
+        ["generate", "--seed", "42", "--months", "12", "--anomaly-rate", "0.05"]
+        + ["--out", str(tmp_path)]
+    )
+    (tmp_path / "labels.csv").unlink()
+    (tmp_path / "manifest.json").unlink()
+    capsys.readouterr()
+    assert main(["check", str(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert "SKIP labels" in out
+    assert "FAIL dates" in out
+    assert "is not a labeled anomaly" in out

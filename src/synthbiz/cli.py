@@ -39,7 +39,11 @@ def _check(args: argparse.Namespace) -> int:
     except (ValueError, OSError, KeyError) as e:
         print(f"Error: {e}")
         return 1
-    results = run_checks(tables, labels)
+    try:
+        results = run_checks(tables, labels)
+    except (ValueError, KeyError, TypeError, IndexError) as e:
+        print(f"Error: could not run the checks: {type(e).__name__} {e}"[:200])
+        return 1
     skipped = 0
     if not (folder / "labels.csv").exists():
         print("SKIP labels (no labels.csv in the folder)")
