@@ -132,7 +132,9 @@ A label points to one row by table name and row id. The diagram draws one of the
   out_of_period_entry.
 - manifest: every file still has the sha256 recorded in manifest.json.
 
-A folder without labels.csv or manifest.json is still valid. `check` prints a SKIP line for each missing file, and the last line says how many checks were skipped, for example "All checks passed, 2 skipped". Skips do not change the exit code. Without labels.csv, the label checks have nothing to test. A table file with a wrong column list or a row with the wrong number of fields stops `check` with one error line and exit code 1.
+A folder without labels.csv and manifest.json still passes. `check` prints a SKIP line for each missing file, and the last line says how many checks were skipped, for example "All checks passed, 2 skipped". Skips do not change the exit code. To hand out data without the answer file, remove both labels.csv and manifest.json. If only labels.csv is removed, the manifest check fails, because manifest.json lists labels.csv.
+
+For any bad input, `check` prints one line like `Error: vendors.csv: line 4 has 3 fields, expected 5` and exits with 1. It never prints a traceback. This covers every table file and labels.csv: wrong or reordered columns, a wrong field count, a blank row in the middle, a value that is not an integer or a date, a file that is not UTF-8 or not valid CSV, an unreadable file, and a Parquet file that cannot be read. Line numbers are physical lines in the file.
 
 ## Check the results yourself
 
