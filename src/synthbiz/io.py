@@ -164,35 +164,77 @@ def verify_manifest(folder: Path) -> list[str] | None:
     return errors
 
 
-def _read_csv(path: Path, expected: list[str]) -> list[dict[str, Any]]:
-    with path.open(newline="", encoding="utf-8") as f:
-        lines = [r for r in csv.reader(f) if r]
-    if not lines:
-        raise ValueError(f"{path.name}: file is empty")
-    header = lines[0]
-    if header != expected:
+def _bad_columns(name: str, expected: list[str], found: str) -> ValueError:
+    return ValueError(
+        f"{name}: columns do not match the schema, "
+        f"expected {','.join(expected)}, found {found[:200]}"
+    )
+
+
+def _check_value(name: str, number: int, column: str, kind: str, value: str) -> None:
+    try:
+        if kind == "integer":
+            int(value)
+        elif kind == "date":
+            date.fromisoformat(value)
+    except ValueError:
         raise ValueError(
-            f"{path.name}: columns do not match the schema, "
-            f"expected {','.join(expected)} but found {','.join(header)}"
-        )
-    for number, row in enumerate(lines[1:], start=2):
+            f"{name}: line {number}: {column} is not a valid {kind}"
+        ) from None
+
+
+def _read_csv(
+    path: Path, expected: list[str], types: dict[str, str] | None = None
+) -> list[dict[str, Any]]:
+    name = path.name
+    records: list[tuple[int, list[str]]] = []
+    try:
+        with path.open(newline="", encoding="utf-8-sig") as f:
+            reader = csv.reader(f)
+            for row in reader:
+                records.append((reader.line_num, row))
+    except UnicodeDecodeError:
+        raise ValueError(f"{name}: not valid UTF-8") from None
+    except csv.Error as e:
+        raise ValueError(f"{name}: not valid CSV, {e}") from None
+    except OSError as e:
+        raise ValueError(f"{name}: could not read the file ({e.strerror})") from None
+    while records and not records[-1][1]:
+        records.pop()
+    if not records:
+        raise ValueError(f"{name}: file is empty")
+    header = records[0][1]
+    if header != expected:
+        raise _bad_columns(name, expected, repr(",".join(header)))
+    out: list[dict[str, Any]] = []
+    for number, row in records[1:]:
+        if not row:
+            raise ValueError(f"{name}: line {number} is blank")
         if len(row) != len(expected):
             raise ValueError(
-                f"{path.name}: line {number} has {len(row)} fields, "
-                f"expected {len(expected)}"
+                f"{name}: line {number} has {len(row)} fields, expected {len(expected)}"
             )
-    return [dict(zip(header, row, strict=True)) for row in lines[1:]]
+        for column, value in zip(header, row, strict=True):
+            kind = (types or {}).get(column, "string")
+            _check_value(name, number, column, kind, value)
+        out.append(dict(zip(header, row, strict=True)))
+    return out
 
 
 def _read_parquet(path: Path, expected: list[str]) -> list[dict[str, Any]]:
-    import pyarrow.parquet as pq
-
-    table = pq.read_table(path)
-    if table.column_names != expected:
+    try:
+        import pyarrow.parquet as pq
+    except ImportError:
         raise ValueError(
-            f"{path.name}: columns do not match the schema, "
-            f"expected {','.join(expected)} but found {','.join(table.column_names)}"
-        )
+            f"{path.name}: pyarrow is needed to read Parquet files, "
+            "install synthbiz[parquet]"
+        ) from None
+    try:
+        table = pq.read_table(path)
+    except Exception:
+        raise ValueError(f"{path.name}: not a readable Parquet file") from None
+    if table.column_names != expected:
+        raise _bad_columns(path.name, expected, repr(",".join(table.column_names)))
     rows = table.to_pylist()
     return [
         {
@@ -201,6 +243,11 @@ def _read_parquet(path: Path, expected: list[str]) -> list[dict[str, Any]]:
         }
         for r in rows
     ]
+
+
+def _types(table: str) -> dict[str, str]:
+    cols = schema_dict()["tables"][table]["columns"]
+    return {c["name"]: c["type"] for c in cols}
 
 
 def read_dataset(
@@ -216,7 +263,7 @@ def read_dataset(
         if csv_path.exists() and pq_path.exists():
             raise ValueError(f"both {name}.csv and {name}.parquet are in {folder}")
         if csv_path.exists():
-            tables[name] = _read_csv(csv_path, columns(name))
+            tables[name] = _read_csv(csv_path, columns(name), _types(name))
         elif pq_path.exists():
             tables[name] = _read_parquet(pq_path, columns(name))
         else:

@@ -208,3 +208,32 @@ def test_check_without_labels_only(
     out = capsys.readouterr().out
     assert "SKIP labels" in out
     assert "labels.csv: listed in manifest.json but missing" in out
+
+
+def test_check_bad_value_reports_one_line(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gen(tmp_path)
+    capsys.readouterr()
+    (tmp_path / "manifest.json").unlink()
+    path = tmp_path / "bank_transactions.csv"
+    lines = path.read_text().splitlines()
+    cells = lines[1].split(",")
+    cells[2] = "abc"
+    lines[1] = ",".join(cells)
+    path.write_text("\n".join(lines) + "\n")
+    assert main(["check", str(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert out == (
+        "Error: bank_transactions.csv: line 2: amount_cents is not a valid integer\n"
+    )
+
+
+def test_check_without_labels_and_manifest_is_valid(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gen(tmp_path)
+    (tmp_path / "labels.csv").unlink()
+    (tmp_path / "manifest.json").unlink()
+    assert main(["check", str(tmp_path)]) == 0
+    capsys.readouterr()
