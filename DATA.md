@@ -22,12 +22,12 @@ company, a public dataset or an outside list.
 
 ## Runtime dependencies
 
-The demo page loads Pyodide (MPL-2.0) and micropip (MPL-2.0) from cdn.jsdelivr.net at runtime. They are not bundled in this repo.
+The demo page loads Pyodide and micropip from cdn.jsdelivr.net at runtime. They are not bundled in this repo. Their licenses are listed in THIRD_PARTY_NOTICES.md.
 
 ## Licenses
 
-- Code: Apache-2.0, see `LICENSE`.
-- Generated sample data and the docs: CC BY 4.0,
-  https://creativecommons.org/licenses/by/4.0/
+The code, the docs and the generated sample data are all rights reserved. See `LICENSE`.
+
+Third-party parts keep their own licenses. They are listed in THIRD_PARTY_NOTICES.md.
 
 Synthetic data for testing and learning only. Any match with a real business is unintended. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance.

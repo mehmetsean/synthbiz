@@ -208,9 +208,12 @@ manifest.json sha256: e097ae0fa389b4ccdf3abb2b19e3bcd8bf40862257fd904fc06339cf42
 
 See docs/spec.md for scope, DATA.md for data sources and docs/adr/ for design decisions.
 
+## Contributing
+
+Outside code contributions are not accepted. Bug reports by issue are welcome.
+
 ## License
 
-Code: Apache-2.0, see `LICENSE`. Docs and generated data: CC BY 4.0,
-https://creativecommons.org/licenses/by/4.0/
+All rights reserved. See LICENSE.
 
 Synthetic data for testing and learning only. Any match with a real business is unintended. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance.

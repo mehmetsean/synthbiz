@@ -9,3 +9,4 @@
 - [0007 check accepts only known synthbiz file names in manifest.json](0007-check-reads-known-names-only.md)
 - [0008 The CodeQL job skips while the repo is private](0008-codeql-skips-while-private.md)
 - [0009 The demo runs in the browser with Pyodide, script pinned with SRI](0009-browser-demo-with-pyodide.md)
+- [0010 All rights reserved from 0.1.1](0010-all-rights-reserved.md)
