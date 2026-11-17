@@ -40,8 +40,13 @@ def _check(args: argparse.Namespace) -> int:
         print(f"Error: {e}")
         return 1
     results = run_checks(tables, labels)
+    skipped = 0
+    if not (folder / "labels.csv").exists():
+        print("SKIP labels (no labels.csv in the folder)")
+        skipped += 1
     if manifest is None:
         print("SKIP manifest (no manifest.json in the folder)")
+        skipped += 1
     else:
         results.append(Result("manifest", not manifest, manifest))
     failed = False
@@ -52,7 +57,12 @@ def _check(args: argparse.Namespace) -> int:
         if len(r.messages) > MAX_SHOWN:
             print(f"  and {len(r.messages) - MAX_SHOWN} more")
         failed = failed or not r.ok
-    print("Some checks failed" if failed else "All checks passed")
+    if failed:
+        print("Some checks failed")
+    elif skipped:
+        print(f"All checks passed, {skipped} skipped")
+    else:
+        print("All checks passed")
     return 1 if failed else 0
 
 

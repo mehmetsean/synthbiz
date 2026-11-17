@@ -149,3 +149,62 @@ def test_module_entry_point(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(SystemExit) as e:
         runpy.run_module("synthbiz", run_name="__main__")
     assert e.value.code == 0
+
+
+def _cut_last_column(path: Path) -> None:
+    lines = path.read_text().splitlines()
+    path.write_text("\n".join(line.rsplit(",", 1)[0] for line in lines) + "\n")
+
+
+def test_check_malformed_table_reports_one_line(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gen(tmp_path)
+    capsys.readouterr()
+    _cut_last_column(tmp_path / "bank_transactions.csv")
+    assert main(["check", str(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert out.startswith("Error: bank_transactions.csv: columns do not match")
+    assert len(out.splitlines()) == 1
+    assert "Traceback" not in out
+
+
+def test_check_short_row_reports_one_line(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gen(tmp_path)
+    capsys.readouterr()
+    path = tmp_path / "journal_lines.csv"
+    lines = path.read_text().splitlines()
+    lines[2] = lines[2].split(",")[0]
+    path.write_text("\n".join(lines) + "\n")
+    assert main(["check", str(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert out.startswith("Error: journal_lines.csv: line 3 has 1 fields")
+    assert "Traceback" not in out
+
+
+def test_check_without_labels_skips_and_counts(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gen(tmp_path)
+    capsys.readouterr()
+    (tmp_path / "labels.csv").unlink()
+    (tmp_path / "manifest.json").unlink()
+    assert main(["check", str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert "SKIP labels (no labels.csv in the folder)" in out
+    assert "SKIP manifest" in out
+    assert out.strip().splitlines()[-1] == "All checks passed, 2 skipped"
+
+
+def test_check_without_labels_only(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gen(tmp_path)
+    capsys.readouterr()
+    (tmp_path / "labels.csv").unlink()
+    assert main(["check", str(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert "SKIP labels" in out
+    assert "labels.csv: listed in manifest.json but missing" in out
