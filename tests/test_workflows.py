@@ -15,7 +15,7 @@ def _load(path: Path) -> dict[Any, Any]:
 
 
 def _triggers(data: dict[Any, Any]) -> dict[Any, Any]:
-    # YAML 1.1 reads the key "on" as True
+    # YAML quirk
     triggers = data.get("on", data.get(True))
     assert isinstance(triggers, dict)
     return triggers
