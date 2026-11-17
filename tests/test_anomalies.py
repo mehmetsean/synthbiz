@@ -143,3 +143,13 @@ def test_no_holiday_type_when_range_has_no_holiday() -> None:
     assert by_type(ds, "holiday_posting") == []
     for r in run_checks(ds.tables, ds.labels):
         assert r.ok
+
+
+def test_planted_journal_memos_also_appear_on_normal_rows() -> None:
+    ds = generate(Params(seed=42, months=12, anomaly_rate=0.05))
+    planted = {x["row_id"] for x in ds.labels if x["table"] == "journal_lines"}
+    lines = ds.tables["journal_lines"]
+    planted_memos = {r["memo"] for r in lines if r["line_id"] in planted}
+    normal_memos = {r["memo"] for r in lines if r["line_id"] not in planted}
+    assert planted_memos
+    assert planted_memos <= normal_memos

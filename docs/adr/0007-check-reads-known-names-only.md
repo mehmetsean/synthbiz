@@ -12,4 +12,4 @@ check accepts only the known synthbiz file names listed in the manifest. Any oth
 
 ## Consequences
 
-A hostile manifest cannot make check read files outside the dataset. A new file type needs a code change.
+A manifest that names a file outside the known list is reported as an error, and that file is not read. A test checks this. A new file type needs a code change.

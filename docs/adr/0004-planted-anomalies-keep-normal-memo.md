@@ -12,4 +12,4 @@ A planted journal entry keeps an ordinary memo, like any other entry. The answer
 
 ## Consequences
 
-Tests of detection tools are fair. A person reading the ledger cannot find anomalies from memo text.
+A planted row's memo also appears on normal rows, so the memo alone does not give it away. A test checks this.
