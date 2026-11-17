@@ -4,7 +4,7 @@ Status: Accepted
 
 ## Context
 
-Release 0.1.0 went out under Apache-2.0 for the code and CC BY 4.0 for the docs and sample data. The owner now wants all rights reserved.
+Release 0.1.0 went out under Apache-2.0 for the code and CC BY 4.0 for the docs and sample data. The project now uses all rights reserved.
 
 ## Decision
 

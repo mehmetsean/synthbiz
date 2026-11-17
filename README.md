@@ -216,6 +216,6 @@ Outside code contributions are not accepted. Bug reports by issue are welcome.
 
 All rights reserved. You may view the code and run it to evaluate it. Commercial use needs a paid license from Mehmet Tuzunkan: https://www.linkedin.com/in/mstuzunkan
 
-See LICENSE.
+Any other use needs written permission. See LICENSE.
 
 Synthetic data for testing and learning only. Any match with a real business is unintended. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance.

@@ -38,4 +38,4 @@ These are installed with the dev extra, together with pyarrow. They are used to 
 | mypy | MIT |
 | pyyaml | MIT |
 
-To check a license, install the package and run `pip show <name>`.
+To check a Python package license, install it and run `pip show <name>`. To check Pyodide and micropip, open the LICENSE file at https://github.com/pyodide/pyodide and https://github.com/pyodide/micropip.
