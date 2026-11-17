@@ -6,6 +6,9 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ### Fixed
 
+- `synthbiz check` no longer crashes on a table or labels.csv with a wrong column list or a row with too few or too many fields. It prints one line naming the file and the problem, and exits with 1.
+- `synthbiz check` now prints "SKIP labels" when labels.csv is missing, and the last line says how many checks were skipped.
+- The spec no longer says all Pyodide files have an integrity hash. Only the pyodide.js script tag does, as docs/adr/0009 says.
 - The Pages workflow file did not parse, so the demo page never deployed. A test now loads every workflow file.
 
 ### Added

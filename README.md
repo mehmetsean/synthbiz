@@ -132,6 +132,8 @@ A label points to one row by table name and row id. The diagram draws one of the
   out_of_period_entry.
 - manifest: every file still has the sha256 recorded in manifest.json.
 
+A folder without labels.csv or manifest.json is still valid. `check` prints a SKIP line for each missing file, and the last line says how many checks were skipped, for example "All checks passed, 2 skipped". Skips do not change the exit code. Without labels.csv, the label checks have nothing to test. A table file with a wrong column list or a row with the wrong number of fields stops `check` with one error line and exit code 1.
+
 ## Check the results yourself
 
 Run these from the repo folder.
