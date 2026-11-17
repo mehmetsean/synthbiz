@@ -110,3 +110,6 @@ def test_golden_checksum_seed_42(tmp_path: Path) -> None:
     assert sha(tmp_path / "journal_lines.csv") == (
         "5a93b15aa3e28d9158f1e0cadb32667d4ef59b91ab89e718cbe84d71f0a3c18c"
     )
+    assert sha(tmp_path / "bank_transactions.csv") == (
+        "5058b0f6ae6db056594cf3702181daa53437833a655023cff52e405d0a90dc64"
+    )

@@ -125,3 +125,9 @@ def test_same_seed_same_data_different_seed_differs() -> None:
 def test_anomaly_rate_range() -> None:
     with pytest.raises(ValueError):
         generate(make(anomaly_rate=1.5))
+
+
+def test_bank_ids_increase_down_the_file() -> None:
+    ds = generate(Params(seed=42, months=3))
+    ids = [r["bank_txn_id"] for r in ds.tables["bank_transactions"]]
+    assert ids == [f"BK-{n:06d}" for n in range(1, len(ids) + 1)]

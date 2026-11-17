@@ -110,6 +110,8 @@ def _sort(tables: dict[str, list[Row]]) -> None:
     }
     for name, (k1, k2) in keys.items():
         tables[name].sort(key=lambda r: (r[k1], r[k2]))
+    for n, row in enumerate(tables["bank_transactions"], start=1):
+        row["bank_txn_id"] = f"BK-{n:06d}"
 
 
 def generate(params: Params) -> Dataset:
