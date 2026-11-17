@@ -104,8 +104,14 @@ function download() {
   if (!lastArgs) return;
   try {
     const proxy = demo.demo_zip(...lastArgs);
-    const bytes = proxy.toJs();
-    proxy.destroy();
+    let bytes;
+    try {
+      const buf = proxy.getBuffer();
+      bytes = buf.data.slice();
+      buf.release();
+    } finally {
+      proxy.destroy();
+    }
     const blob = new Blob([bytes], { type: "application/zip" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
