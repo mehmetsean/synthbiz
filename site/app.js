@@ -29,6 +29,9 @@ function readInputs() {
 
 function makeTable(title, rows, columns) {
   const wrap = el("div", undefined, "scroll");
+  wrap.tabIndex = 0;
+  wrap.setAttribute("role", "region");
+  wrap.setAttribute("aria-label", title);
   const table = el("table");
   table.appendChild(el("caption", title));
   const head = el("tr");
@@ -51,14 +54,92 @@ function makeTable(title, rows, columns) {
   return wrap;
 }
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function svg(tag, attrs, text) {
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) node.setAttribute(k, String(v));
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function countByType(labels) {
+  const counts = {};
+  for (const l of labels) counts[l.anomaly_type] = (counts[l.anomaly_type] || 0) + 1;
+  return Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+}
+
+function makeChart(rows) {
+  const rowH = 28;
+  const labelW = Math.max(...rows.map((r) => r[0].length)) * 7 + 8;
+  const barMax = 140;
+  const width = labelW + barMax + 50;
+  const height = rows.length * rowH + 8;
+  const max = Math.max(...rows.map((r) => r[1]));
+  const chart = svg("svg", {
+    class: "chart",
+    viewBox: "0 0 " + width + " " + height,
+    width: width,
+    height: height,
+  });
+  chart.setAttribute("role", "img");
+  chart.setAttribute("aria-labelledby", "chart-title chart-desc");
+  chart.appendChild(svg("title", { id: "chart-title" }, "Planted anomalies by type"));
+  const summary = rows.map((r) => r[0] + " " + r[1]).join(", ");
+  chart.appendChild(svg("desc", { id: "chart-desc" }, "Bar chart. " + summary + "."));
+  rows.forEach(([name, n], i) => {
+    const y = i * rowH + 4;
+    const w = Math.max(2, Math.round((n / max) * barMax));
+    chart.appendChild(svg("text", { x: 0, y: y + 17 }, name));
+    chart.appendChild(svg("rect", { class: "bar", x: labelW, y: y, width: w, height: 20, rx: 3 }));
+    chart.appendChild(svg("text", { x: labelW + w + 6, y: y + 17 }, String(n)));
+  });
+  return chart;
+}
+
+function renderSummary(data) {
+  const names = Object.keys(data.tables);
+  const rows = names.reduce((sum, n) => sum + data.tables[n].rows, 0);
+  const passed = data.checks.filter((c) => c.ok).length;
+  const items = [
+    [rows.toLocaleString("en-US"), "total rows"],
+    [String(names.length), "tables"],
+    [String(data.anomaly_count), "planted anomalies"],
+    [passed + " of " + data.checks.length, "checks passed"],
+  ];
+  const list = document.getElementById("summary");
+  list.replaceChildren();
+  for (const [value, label] of items) {
+    const li = el("li");
+    li.appendChild(el("span", value, "value"));
+    li.appendChild(el("span", label, "label"));
+    list.appendChild(li);
+  }
+}
+
+function renderChart(data) {
+  const box = document.getElementById("chart");
+  box.replaceChildren();
+  const rows = countByType(data.labels);
+  if (rows.length === 0) {
+    box.appendChild(el("p", "No anomalies planted. Raise the anomaly rate to see a chart."));
+    return;
+  }
+  box.appendChild(makeChart(rows));
+  const asTable = rows.map(([name, n]) => ({ anomaly_type: name, count: n }));
+  box.appendChild(makeTable("Anomaly counts by type", asTable, ["anomaly_type", "count"]));
+}
+
 function render(data) {
+  renderSummary(data);
+  renderChart(data);
   const checks = document.getElementById("checks");
   checks.replaceChildren();
   for (const c of data.checks) {
     const li = el("li");
-    li.appendChild(el("strong", c.ok ? "PASS" : "FAIL", c.ok ? "pass" : "fail"));
-    li.appendChild(el("span", " " + c.rule));
-    for (const m of c.messages) li.appendChild(el("div", m));
+    li.appendChild(el("strong", c.ok ? "[PASS]" : "[FAIL]", "mark " + (c.ok ? "pass" : "fail")));
+    li.appendChild(el("span", c.rule));
+    for (const m of c.messages) li.appendChild(el("div", m, "msg"));
     checks.appendChild(li);
   }
   const labels = document.getElementById("labels");
