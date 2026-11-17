@@ -1,0 +1,19 @@
+body { font-family: system-ui, sans-serif; margin: 0; line-height: 1.5; color: #1a1a1a; background: #fff; }
+main, footer { max-width: 60rem; margin: 0 auto; padding: 1rem; }
+footer { font-size: 0.875rem; color: #444; border-top: 1px solid #ccc; }
+a { color: #0b5394; }
+.note { background: #eef4fa; padding: 0.5rem 0.75rem; border-left: 4px solid #0b5394; }
+form { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+.field { display: flex; flex-direction: column; }
+label { font-weight: 600; font-size: 0.875rem; }
+input, select, button { font: inherit; padding: 0.4rem 0.6rem; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: 0.6; }
+.buttons { display: flex; gap: 0.5rem; }
+#status { font-weight: 600; }
+.pass { color: #14663a; }
+.fail { color: #a11; }
+.scroll { overflow-x: auto; margin-bottom: 1rem; }
+table { border-collapse: collapse; font-size: 0.8125rem; }
+th, td { border: 1px solid #ccc; padding: 0.2rem 0.5rem; text-align: left; white-space: nowrap; }
+caption { text-align: left; font-weight: 600; padding: 0.25rem 0; }
