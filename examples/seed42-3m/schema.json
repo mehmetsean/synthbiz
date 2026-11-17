@@ -1,0 +1,500 @@
+{
+  "synthetic": true,
+  "amounts": "All amounts are integer cents.",
+  "tables": {
+    "chart_of_accounts": {
+      "description": "Ledger accounts. The role column marks control and cash accounts.",
+      "primary_key": [
+        "account_id"
+      ],
+      "foreign_keys": {},
+      "columns": [
+        {
+          "name": "account_id",
+          "type": "string",
+          "description": "Account number."
+        },
+        {
+          "name": "account_name",
+          "type": "string",
+          "description": "Account name."
+        },
+        {
+          "name": "account_type",
+          "type": "string",
+          "description": "ASSET, LIABILITY, EQUITY, REVENUE or EXPENSE."
+        },
+        {
+          "name": "normal_balance",
+          "type": "string",
+          "description": "DEBIT or CREDIT."
+        },
+        {
+          "name": "role",
+          "type": "string",
+          "description": "CASH, AP_CONTROL, AR_CONTROL or empty."
+        }
+      ]
+    },
+    "journal_lines": {
+      "description": "One row per journal line. Lines with the same je_id form one entry.",
+      "primary_key": [
+        "line_id"
+      ],
+      "foreign_keys": {
+        "account_id": "chart_of_accounts.account_id"
+      },
+      "columns": [
+        {
+          "name": "line_id",
+          "type": "string",
+          "description": "Line id."
+        },
+        {
+          "name": "je_id",
+          "type": "string",
+          "description": "Journal entry id."
+        },
+        {
+          "name": "line_no",
+          "type": "integer",
+          "description": "Line number within the entry."
+        },
+        {
+          "name": "posting_date",
+          "type": "date",
+          "description": "Date the entry was posted."
+        },
+        {
+          "name": "period",
+          "type": "string",
+          "description": "Accounting period, YYYY-MM."
+        },
+        {
+          "name": "account_id",
+          "type": "string",
+          "description": "Account posted to."
+        },
+        {
+          "name": "debit_cents",
+          "type": "integer",
+          "description": "Debit amount in cents."
+        },
+        {
+          "name": "credit_cents",
+          "type": "integer",
+          "description": "Credit amount in cents."
+        },
+        {
+          "name": "memo",
+          "type": "string",
+          "description": "Short description."
+        },
+        {
+          "name": "source_type",
+          "type": "string",
+          "description": "OPENING, AP_INVOICE, AP_PAYMENT, AR_INVOICE, AR_RECEIPT or MANUAL."
+        },
+        {
+          "name": "source_id",
+          "type": "string",
+          "description": "Id of the subledger row that posted here, empty for manual entries."
+        },
+        {
+          "name": "created_by",
+          "type": "string",
+          "description": "Role id of the poster."
+        },
+        {
+          "name": "approved_by",
+          "type": "string",
+          "description": "Role id of the approver, empty if none."
+        }
+      ]
+    },
+    "vendors": {
+      "description": "Vendor master.",
+      "primary_key": [
+        "vendor_id"
+      ],
+      "foreign_keys": {},
+      "columns": [
+        {
+          "name": "vendor_id",
+          "type": "string",
+          "description": "Vendor id."
+        },
+        {
+          "name": "vendor_name",
+          "type": "string",
+          "description": "Vendor name."
+        },
+        {
+          "name": "category",
+          "type": "string",
+          "description": "Spend category."
+        },
+        {
+          "name": "terms_days",
+          "type": "integer",
+          "description": "Payment terms in days."
+        }
+      ]
+    },
+    "ap_invoices": {
+      "description": "Vendor invoices. Each posts to one journal entry.",
+      "primary_key": [
+        "invoice_id"
+      ],
+      "foreign_keys": {
+        "vendor_id": "vendors.vendor_id",
+        "expense_account_id": "chart_of_accounts.account_id",
+        "je_id": "journal_lines.je_id"
+      },
+      "columns": [
+        {
+          "name": "invoice_id",
+          "type": "string",
+          "description": "Invoice id."
+        },
+        {
+          "name": "vendor_id",
+          "type": "string",
+          "description": "Vendor."
+        },
+        {
+          "name": "invoice_number",
+          "type": "string",
+          "description": "Number printed on the vendor invoice."
+        },
+        {
+          "name": "invoice_date",
+          "type": "date",
+          "description": "Invoice and posting date."
+        },
+        {
+          "name": "due_date",
+          "type": "date",
+          "description": "Due date."
+        },
+        {
+          "name": "amount_cents",
+          "type": "integer",
+          "description": "Invoice total in cents."
+        },
+        {
+          "name": "expense_account_id",
+          "type": "string",
+          "description": "Debit account."
+        },
+        {
+          "name": "je_id",
+          "type": "string",
+          "description": "Journal entry it posted to."
+        },
+        {
+          "name": "created_by",
+          "type": "string",
+          "description": "Role id that entered it."
+        },
+        {
+          "name": "approved_by",
+          "type": "string",
+          "description": "Role id that approved it."
+        }
+      ]
+    },
+    "ap_payments": {
+      "description": "Payments to vendors. Each posts to one journal entry.",
+      "primary_key": [
+        "payment_id"
+      ],
+      "foreign_keys": {
+        "vendor_id": "vendors.vendor_id",
+        "invoice_id": "ap_invoices.invoice_id",
+        "je_id": "journal_lines.je_id"
+      },
+      "columns": [
+        {
+          "name": "payment_id",
+          "type": "string",
+          "description": "Payment id."
+        },
+        {
+          "name": "vendor_id",
+          "type": "string",
+          "description": "Vendor paid."
+        },
+        {
+          "name": "invoice_id",
+          "type": "string",
+          "description": "Invoice paid."
+        },
+        {
+          "name": "payment_date",
+          "type": "date",
+          "description": "Payment and posting date."
+        },
+        {
+          "name": "amount_cents",
+          "type": "integer",
+          "description": "Amount paid in cents."
+        },
+        {
+          "name": "method",
+          "type": "string",
+          "description": "ACH or CHECK."
+        },
+        {
+          "name": "je_id",
+          "type": "string",
+          "description": "Journal entry it posted to."
+        },
+        {
+          "name": "created_by",
+          "type": "string",
+          "description": "Role id that entered it."
+        },
+        {
+          "name": "approved_by",
+          "type": "string",
+          "description": "Role id that approved it."
+        }
+      ]
+    },
+    "customers": {
+      "description": "Customer master.",
+      "primary_key": [
+        "customer_id"
+      ],
+      "foreign_keys": {},
+      "columns": [
+        {
+          "name": "customer_id",
+          "type": "string",
+          "description": "Customer id."
+        },
+        {
+          "name": "customer_name",
+          "type": "string",
+          "description": "Customer name."
+        },
+        {
+          "name": "terms_days",
+          "type": "integer",
+          "description": "Payment terms in days."
+        }
+      ]
+    },
+    "ar_invoices": {
+      "description": "Customer invoices. Each posts to one journal entry.",
+      "primary_key": [
+        "invoice_id"
+      ],
+      "foreign_keys": {
+        "customer_id": "customers.customer_id",
+        "je_id": "journal_lines.je_id"
+      },
+      "columns": [
+        {
+          "name": "invoice_id",
+          "type": "string",
+          "description": "Invoice id."
+        },
+        {
+          "name": "customer_id",
+          "type": "string",
+          "description": "Customer billed."
+        },
+        {
+          "name": "invoice_number",
+          "type": "string",
+          "description": "Invoice number."
+        },
+        {
+          "name": "invoice_date",
+          "type": "date",
+          "description": "Invoice and posting date."
+        },
+        {
+          "name": "due_date",
+          "type": "date",
+          "description": "Due date."
+        },
+        {
+          "name": "amount_cents",
+          "type": "integer",
+          "description": "Invoice total in cents."
+        },
+        {
+          "name": "je_id",
+          "type": "string",
+          "description": "Journal entry it posted to."
+        },
+        {
+          "name": "created_by",
+          "type": "string",
+          "description": "Role id that entered it."
+        }
+      ]
+    },
+    "ar_receipts": {
+      "description": "Customer receipts. Each posts to one journal entry.",
+      "primary_key": [
+        "receipt_id"
+      ],
+      "foreign_keys": {
+        "customer_id": "customers.customer_id",
+        "invoice_id": "ar_invoices.invoice_id",
+        "je_id": "journal_lines.je_id"
+      },
+      "columns": [
+        {
+          "name": "receipt_id",
+          "type": "string",
+          "description": "Receipt id."
+        },
+        {
+          "name": "customer_id",
+          "type": "string",
+          "description": "Customer paying."
+        },
+        {
+          "name": "invoice_id",
+          "type": "string",
+          "description": "Invoice paid."
+        },
+        {
+          "name": "receipt_date",
+          "type": "date",
+          "description": "Receipt and posting date."
+        },
+        {
+          "name": "amount_cents",
+          "type": "integer",
+          "description": "Amount received in cents."
+        },
+        {
+          "name": "je_id",
+          "type": "string",
+          "description": "Journal entry it posted to."
+        },
+        {
+          "name": "created_by",
+          "type": "string",
+          "description": "Role id that entered it."
+        }
+      ]
+    },
+    "bank_transactions": {
+      "description": "Bank statement lines. Each clears one payment or receipt, a few business days after its GL date.",
+      "primary_key": [
+        "bank_txn_id"
+      ],
+      "foreign_keys": {},
+      "columns": [
+        {
+          "name": "bank_txn_id",
+          "type": "string",
+          "description": "Bank line id."
+        },
+        {
+          "name": "bank_date",
+          "type": "date",
+          "description": "Date the item cleared the bank."
+        },
+        {
+          "name": "amount_cents",
+          "type": "integer",
+          "description": "Signed amount in cents, negative for money out."
+        },
+        {
+          "name": "ref_type",
+          "type": "string",
+          "description": "AP_PAYMENT, AR_RECEIPT or OPENING."
+        },
+        {
+          "name": "ref_id",
+          "type": "string",
+          "description": "Id of the payment or receipt it clears. For OPENING, the journal entry id."
+        }
+      ]
+    },
+    "reconciling_items": {
+      "description": "Items in the GL cash balance but not yet on the bank statement at a month end.",
+      "primary_key": [
+        "month_end",
+        "ref_id"
+      ],
+      "foreign_keys": {},
+      "columns": [
+        {
+          "name": "month_end",
+          "type": "date",
+          "description": "Month end the item belongs to."
+        },
+        {
+          "name": "item_type",
+          "type": "string",
+          "description": "OUTSTANDING_PAYMENT or DEPOSIT_IN_TRANSIT."
+        },
+        {
+          "name": "ref_type",
+          "type": "string",
+          "description": "AP_PAYMENT or AR_RECEIPT."
+        },
+        {
+          "name": "ref_id",
+          "type": "string",
+          "description": "Payment or receipt id."
+        },
+        {
+          "name": "gl_date",
+          "type": "date",
+          "description": "Date posted to the GL."
+        },
+        {
+          "name": "bank_date",
+          "type": "date",
+          "description": "Date it cleared the bank."
+        },
+        {
+          "name": "amount_cents",
+          "type": "integer",
+          "description": "Signed effect on GL cash in cents."
+        }
+      ]
+    },
+    "labels": {
+      "description": "One row per injected anomaly. Journal anomalies point to the first line of the entry; every line with the same je_id is part of it. A split_invoice label points to the first invoice of the group and lists the others in details.",
+      "primary_key": [
+        "table",
+        "row_id",
+        "anomaly_type"
+      ],
+      "foreign_keys": {},
+      "columns": [
+        {
+          "name": "table",
+          "type": "string",
+          "description": "Table holding the row."
+        },
+        {
+          "name": "row_id",
+          "type": "string",
+          "description": "Primary key of the labeled row."
+        },
+        {
+          "name": "anomaly_type",
+          "type": "string",
+          "description": "Kind of anomaly."
+        },
+        {
+          "name": "details",
+          "type": "string",
+          "description": "Short plain description."
+        }
+      ]
+    }
+  }
+}
