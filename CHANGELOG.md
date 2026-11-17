@@ -4,7 +4,13 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ## Unreleased
 
-Nothing yet.
+### Fixed
+
+- The Pages workflow file did not parse, so the demo page never deployed. A test now loads every workflow file.
+
+### Added
+
+- The CodeQL workflow can be started by hand.
 
 ## 0.1.0 - 2026-11-17
 
