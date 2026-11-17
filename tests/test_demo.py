@@ -5,7 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from synthbiz.demo import demo_zip, run_demo
+import synthbiz.demo
+from synthbiz.check import Result
+from synthbiz.demo import MAX_MESSAGES, demo_zip, run_demo
 from synthbiz.generate import Params, generate
 from synthbiz.io import verify_manifest, write_dataset
 from synthbiz.schema import TABLE_NAMES
@@ -73,3 +75,12 @@ def test_bad_inputs(args: tuple[object, ...]) -> None:
         run_demo(*args)  # type: ignore[arg-type]
     with pytest.raises(ValueError):
         demo_zip(*args)  # type: ignore[arg-type]
+
+
+def test_messages_are_capped(monkeypatch: pytest.MonkeyPatch) -> None:
+    bad = Result("fake", False, [f"problem {i}" for i in range(8)])
+    monkeypatch.setattr(synthbiz.demo, "run_checks", lambda tables, labels: [bad])
+    data = json.loads(run_demo(*ARGS))
+    fake = data["checks"][0]
+    assert fake["ok"] is False
+    assert fake["messages"] == [f"problem {i}" for i in range(MAX_MESSAGES)]
