@@ -52,6 +52,7 @@ class Builder:
         self.tables: dict[str, list[Row]] = {}
         self.labels: list[dict[str, str]] = []
         self._counters: dict[str, int] = {}
+        self.base_vendors = 0
 
     def table(self, name: str) -> list[Row]:
         return self.tables.setdefault(name, [])

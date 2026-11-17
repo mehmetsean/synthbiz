@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 from . import builder as bld
+from .anomalies import inject
 from .builder import Builder, Row, nonround
 from .check import month_ends_from_lines, reconciling_items
 from .dates import add_business_days, business_days, month_ends, next_business_day
@@ -140,6 +141,7 @@ def generate(params: Params) -> Dataset:
                 "terms_days": b.rng.choice([30, 30, 45]),
             }
         )
+    b.base_vendors = len(b.tables["vendors"])
     for i, name in enumerate(customer_names(b.rng, size.customers), start=1):
         b.tables["customers"].append(
             {
@@ -169,6 +171,7 @@ def generate(params: Params) -> Dataset:
     )
     base_count = _base_activity(b, size, params.months, start)
     anomaly_count = round(params.anomaly_rate * base_count)
+    inject(b, anomaly_count)
     _sort(b.tables)
     ends = month_ends_from_lines(b.tables["journal_lines"])
     b.tables["reconciling_items"] = reconciling_items(b.tables, ends)
