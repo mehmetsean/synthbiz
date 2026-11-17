@@ -8,6 +8,7 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 - License changed to all rights reserved.
 - CONTRIBUTING.md removed. Outside code contributions are not accepted.
+- README.txt in every generated folder now carries the copyright and license notice.
 
 ### Fixed
 

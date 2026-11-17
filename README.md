@@ -203,7 +203,7 @@ Checks:
 - dates: PASS
 - manifest: PASS
 
-manifest.json sha256: a4c49bc56bd4c72f44c2967f94c2751ce9774d81449eb298eb20379e8cfec7af
+manifest.json sha256: 7b52c7eede8f14801dbfd7c330f3dafb939151ee79c436476bbace0c6769ea71
 <!-- numbers:end -->
 
 See docs/spec.md for scope, DATA.md for data sources and docs/adr/ for design decisions.
@@ -214,6 +214,8 @@ Outside code contributions are not accepted. Bug reports by issue are welcome.
 
 ## License
 
-All rights reserved. See LICENSE.
+All rights reserved. You may view the code and run it to evaluate it. Commercial use needs a paid license from Mehmet Tuzunkan: https://www.linkedin.com/in/mstuzunkan
+
+See LICENSE.
 
 Synthetic data for testing and learning only. Any match with a real business is unintended. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance.

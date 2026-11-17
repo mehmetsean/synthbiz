@@ -36,3 +36,28 @@ def test_no_old_license_words():
             continue
         for word in WORDS:
             assert word not in text, f"{word} in {name}"
+
+
+NOTICE = (
+    "All rights reserved. You may view the code and run it to evaluate it. "
+    "Commercial use needs a paid license from Mehmet Tuzunkan: "
+    "https://www.linkedin.com/in/mstuzunkan"
+)
+
+
+def test_readme_notice():
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert NOTICE in text.splitlines()
+    assert "Outside code contributions are not accepted." in text
+
+
+def test_io_notice_matches():
+    from synthbiz.io import NOTICE as io_notice
+
+    assert io_notice == NOTICE
+
+
+def test_no_contributing_or_classifiers():
+    assert not (ROOT / "CONTRIBUTING.md").exists()
+    data = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    assert "classifiers" not in data["project"]

@@ -62,6 +62,7 @@ def test_no_other_external_origins() -> None:
         assert origins <= {
             "https://cdn.jsdelivr.net",
             "https://github.com",
+            "https://www.linkedin.com",
         }, f"{name}: {origins}"
 
 

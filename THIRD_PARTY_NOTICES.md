@@ -11,32 +11,31 @@ The demo page in site/ loads these from cdn.jsdelivr.net at runtime. They are no
 | Part | Version | License |
 | --- | --- | --- |
 | Pyodide | 314.0.8 | MPL-2.0 |
-| micropip | 0.11.1 | MPL-2.0 |
+| micropip | as bundled with Pyodide 314.0.8 | MPL-2.0 |
 
 ## Optional extra
 
-| Part | Version checked | License |
-| --- | --- | --- |
-| pyarrow (the parquet extra) | 26.0.1 | Apache-2.0 |
+| Part | License |
+| --- | --- |
+| pyarrow (the parquet extra) | Apache-2.0 |
 
 ## Build tool
 
-| Part | Version checked | License |
-| --- | --- | --- |
-| hatchling | 1.33.0 | MIT |
+| Part | License |
+| --- | --- |
+| hatchling | MIT |
 
 ## Dev tools
 
-These are installed with the dev extra. They are used to test and check the code only.
+These are installed with the dev extra, together with pyarrow. They are used to test and check the code only.
 
-| Part | Version checked | License |
-| --- | --- | --- |
-| pytest | 9.2.0 | MIT |
-| pytest-cov | 7.1.0 | MIT |
-| hypothesis | 6.170.15 | MPL-2.0 |
-| ruff | 0.17.5 | MIT |
-| mypy | 2.4.1 | MIT |
-| pyarrow | 26.0.1 | Apache-2.0 |
-| pyyaml | 6.0.3 | MIT |
+| Part | License |
+| --- | --- |
+| pytest | MIT |
+| pytest-cov | MIT |
+| hypothesis | MPL-2.0 |
+| ruff | MIT |
+| mypy | MIT |
+| pyyaml | MIT |
 
-The license of each part was read from its package metadata.
+To check a license, install the package and run `pip show <name>`.

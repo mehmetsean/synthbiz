@@ -10,7 +10,7 @@ import synthbiz.io
 from synthbiz import __version__
 from synthbiz.check import run_checks
 from synthbiz.generate import Params, generate
-from synthbiz.io import read_dataset, verify_manifest, write_dataset
+from synthbiz.io import NOTICE, read_dataset, verify_manifest, write_dataset
 from synthbiz.schema import TABLE_NAMES, columns
 
 PARAMS = Params(seed=11, months=2, size="small", anomaly_rate=0.1)
@@ -62,7 +62,7 @@ def test_readme_text(tmp_path: Path) -> None:
         "business is unintended. Decision support only, not legal, tax, "
         "accounting or assurance advice. No guarantee of compliance."
     ) in text.splitlines()
-    assert "All rights reserved." in text
+    assert NOTICE in text.splitlines()
 
 
 def test_no_long_dashes(tmp_path: Path) -> None:
