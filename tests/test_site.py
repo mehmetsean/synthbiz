@@ -55,16 +55,25 @@ def test_csp_meta_tag() -> None:
         assert part in html
 
 
+SVG_NS = "http://www.w3.org/2000/svg"
+
+
 def test_no_other_external_origins() -> None:
     for name in ["index.html", "app.js", "style.css"]:
-        text = (SITE / name).read_text(encoding="utf-8")
+        text = (SITE / name).read_text(encoding="utf-8").replace(SVG_NS, "")
         origins = set(re.findall(r"https?://[^/\s\"'<>);]+", text))
         assert origins <= {
             "https://cdn.jsdelivr.net",
             "https://github.com",
             "https://www.linkedin.com",
-            "http://www.w3.org",
         }, f"{name}: {origins}"
+
+
+def test_svg_namespace_only_in_app_js() -> None:
+    js = (SITE / "app.js").read_text(encoding="utf-8")
+    assert js.count(SVG_NS) == 1
+    for name in ["index.html", "style.css"]:
+        assert SVG_NS not in (SITE / name).read_text(encoding="utf-8")
 
 
 def test_no_inline_handlers_or_innerhtml() -> None:

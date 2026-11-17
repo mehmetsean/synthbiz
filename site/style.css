@@ -4,7 +4,7 @@
   --color-surface: #ffffff;
   --color-text: #1a1d23;
   --color-muted: #4a5160;
-  --color-border: #c9cfd9;
+  --color-border: #767e8c;
   --color-accent: #0b5cad;
   --color-accent-text: #ffffff;
   --color-accent-soft: #e6f0fb;
@@ -35,7 +35,7 @@
     --color-surface: #1b1f27;
     --color-text: #e8eaee;
     --color-muted: #aab1bf;
-    --color-border: #3a4150;
+    --color-border: #7d8594;
     --color-accent: #7db4f0;
     --color-accent-text: #0b1220;
     --color-accent-soft: #1d2a3b;
@@ -169,7 +169,7 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 }
 .summary .label { font-size: var(--text-sm); color: var(--color-muted); }
 
-.chart { display: block; width: 100%; height: auto; max-width: 40rem; }
+.chart { display: block; max-width: 100%; height: auto; }
 .chart .bar { fill: var(--color-bar); }
 .chart text { fill: var(--color-text); font-family: var(--font-sans); font-size: 13px; }
 

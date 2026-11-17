@@ -72,8 +72,8 @@ function countByType(labels) {
 function makeChart(rows) {
   const rowH = 28;
   const labelW = Math.max(...rows.map((r) => r[0].length)) * 7 + 8;
-  const barMax = 140;
-  const width = labelW + barMax + 50;
+  const barMax = 110;
+  const width = labelW + barMax + 40;
   const height = rows.length * rowH + 8;
   const max = Math.max(...rows.map((r) => r[1]));
   const chart = svg("svg", {
