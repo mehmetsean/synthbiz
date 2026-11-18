@@ -4,24 +4,26 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ## Unreleased
 
+## 0.1.2 - 2026-11-17
+
 ### Changed
 
 - Integer columns accept only an optional minus sign and 1 to 18 ASCII digits. Forms such as " 5", "1_000" and "+5" are reported as not a valid integer.
 - generate refuses a run longer than 1200 months.
 - check and the readers accept only YYYY-MM-DD dates. Other forms such as 20240131 are reported as not a valid date.
-- check no longer rescans every row for each month end. Balances are bucketed by month end in one pass. generate calls the same reconciling_items code, and its output files are unchanged (tests/test_examples.py compares them byte for byte).
+- check no longer rescans every row for each month end. Balances are summed by month end in one pass. generate uses the same code, and its output files are unchanged. A test compares them byte for byte.
 - LICENSE now says that commercial use needs a paid license and how to buy one.
 - Demo page redesign: design tokens, light and dark themes, a responsive form and a header with the source link.
 
 ### Fixed
 
-- A Parquet file that declares more than 3,000,000 rows is refused from its metadata. A CSV file is stopped once it passes 3,000,000 rows. A folder with more than 5,000,000 rows in total is stopped too.
+- A Parquet file whose metadata declares more than 3,000,000 rows is refused before it is read. A CSV file is stopped once it passes 3,000,000 rows. A folder with more than 5,000,000 rows in total is stopped too.
 - check stops with a one-line error for a date span above 1200 months or for more than 200,000 reconciling items, instead of building the full list.
 
 ### Added
 
-- benchmarks/bench.py and docs/benchmark.md: timings against the old check code and a simple unlinked generator, with a correctness assertion that CI runs.
-- Equivalence tests that compare the checks with the old reference code on random and tampered data.
+- benchmarks/bench.py and docs/benchmark.md: timings of check against the old code, and of generate against a simple random-row generator. The script asserts that the new check gives the same results as the old code, and CI runs that assertion.
+- Tests that compare the new check with the old code on random and altered data.
 - Demo summary row with total rows, tables, planted anomalies and checks passed.
 - Demo bar chart of planted anomalies by type, with the same numbers in a text table.
 - Demo check results show [PASS] and [FAIL] marks, so they do not rely on color alone.
