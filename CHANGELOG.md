@@ -4,6 +4,16 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ## Unreleased
 
+### Changed
+
+- Demo previews show money columns as US dollars, for example $12,345.67, right-aligned. The zip download keeps raw cents.
+- Demo preview tables show a short hint and a visible scrollbar when they are wider than the screen. Long text cells wrap, and long anomaly details open with a keyboard-friendly toggle.
+- The demo page has one source link, in the header.
+
+### Added
+
+- A browser test of the Generate button, and a CI job that runs it in Chromium. It is not part of the required ci check.
+
 ## 0.1.2 - 2026-11-17
 
 ### Changed
