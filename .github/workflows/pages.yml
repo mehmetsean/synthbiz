@@ -3,13 +3,14 @@ name: pages
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -30,12 +31,13 @@ jobs:
       - run: cp site/* _site/
       - run: |
           python -c "import glob, json; json.dump({'wheel': glob.glob('_site/*.whl')[0].split('/')[-1]}, open('_site/wheel.json', 'w'))"
-      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+      - if: ${{ github.event_name != 'pull_request' }}
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: _site
 
   deploy:
-    if: ${{ !github.event.repository.private }}
+    if: ${{ !github.event.repository.private && github.event_name != 'pull_request' }}
     needs: build
     runs-on: ubuntu-latest
     permissions:

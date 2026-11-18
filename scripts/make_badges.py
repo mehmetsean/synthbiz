@@ -124,7 +124,9 @@ def main(args: list[str]) -> int:
     out = Path(args[2])
     out.mkdir(parents=True, exist_ok=True)
     cov_svg = make_badge("coverage", percent_text(coverage), coverage_color(coverage))
-    test_svg = make_badge("tests", tests_text(passed, failed), tests_color(passed, failed))
+    test_svg = make_badge(
+        "tests", tests_text(passed, failed), tests_color(passed, failed)
+    )
     (out / "coverage.svg").write_text(cov_svg, encoding="utf-8")
     (out / "tests.svg").write_text(test_svg, encoding="utf-8")
     return 0

@@ -42,10 +42,40 @@ def test_workflow_parses(path: Path) -> None:
                 assert isinstance(step["run"], str)
 
 
-def test_pages_runs_on_main_and_by_hand() -> None:
+def test_pages_runs_on_main_pull_requests_and_by_hand() -> None:
     triggers = _triggers(_load(WORKFLOWS / "pages.yml"))
     assert triggers["push"]["branches"] == ["main"]
+    assert "pull_request" in triggers
     assert "workflow_dispatch" in triggers
+
+
+def test_pages_deploy_and_upload_skip_pull_requests() -> None:
+    jobs = _load(WORKFLOWS / "pages.yml")["jobs"]
+    assert "github.event_name != 'pull_request'" in jobs["deploy"]["if"]
+    uploads = [
+        step
+        for step in jobs["build"]["steps"]
+        if "upload-pages-artifact" in step.get("uses", "")
+    ]
+    assert len(uploads) == 1
+    assert "github.event_name != 'pull_request'" in uploads[0]["if"]
+
+
+def test_pages_build_runs_tests_before_badges_before_upload() -> None:
+    steps = _load(WORKFLOWS / "pages.yml")["jobs"]["build"]["steps"]
+    texts = [step.get("run", step.get("uses", "")) for step in steps]
+    pytest_at = next(i for i, t in enumerate(texts) if t.startswith("pytest"))
+    assert "--junitxml" in texts[pytest_at]
+    assert "--cov-report=json" in texts[pytest_at]
+    badges_at = next(i for i, t in enumerate(texts) if "make_badges.py" in t)
+    upload_at = next(i for i, t in enumerate(texts) if "upload-pages-artifact" in t)
+    assert pytest_at < badges_at < upload_at
+
+
+def test_pages_concurrency_is_per_ref() -> None:
+    group = _load(WORKFLOWS / "pages.yml")["concurrency"]
+    assert "github.ref" in group["group"]
+    assert group["cancel-in-progress"] is False
 
 
 def test_codeql_can_run_by_hand() -> None:
