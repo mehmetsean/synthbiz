@@ -16,7 +16,7 @@ It also prints the total row count and how many of the 5 rules pass on the synth
 ## The two baselines
 
 1. Reference checks. These are the check functions from before the single-pass change, copied verbatim. They rescan every row once per month end. They are the timing baseline for check, and they are the oracle in `tests/test_check_equivalence.py`. The script asserts, for every case, that the new results equal the reference results (same rule, same ok flag, same messages). If they differ, it exits with 1. This assertion is what CI runs.
-2. Unlinked rows. This is the kind of generator a one-off script would use. For each table it writes the same row count as `generate` and fills the columns with independent random values from `random.Random(seed)`: ids, ISO dates in the range, amounts. No keys are shared between tables and nothing is posted to a ledger. It is a fair speed baseline for "just make rows", and it shows what is lost: on this data 0 of the 5 rules pass, because journal entries do not balance, subledgers do not tie to the ledger, and foreign keys point nowhere. On synthbiz data all 5 pass.
+2. Unlinked rows. This is the kind of generator a one-off script would use. For each table it writes the same row count as `generate` and fills the columns with independent random values from `random.Random(seed)`: ids, ISO dates in the range, amounts. No keys are shared between tables and nothing is posted to a ledger. It is a simple speed baseline for generating random rows, and it shows what is lost: on this data 0 of the 5 rules pass, because journal entries do not balance, subledgers do not tie to the ledger, and foreign keys point nowhere. On synthbiz data all 5 pass.
 
 ## How to run
 
@@ -36,7 +36,7 @@ python benchmarks/bench.py --quick --repeat 1
 
 `--quick` runs only size small with 3 and 12 months. CI runs the quick form, so CI checks correctness, not speed. There are no timing assertions, because machines differ.
 
-To check that the new code matches the reference on random data:
+To check that the new code matches the reference on random, tampered and junk data:
 
 ```
 pytest tests/test_check_equivalence.py
@@ -48,7 +48,7 @@ M is the number of month ends, R is the total number of rows in the tables a fun
 
 | function | before | after |
 |---|---|---|
-| `month_ends_from_lines` | O(R log R) sort of all dates | O(R) min and max |
+| `month_ends_from_lines` | O(R log R) sort of all dates | O(R) min and max (the sort was small next to the rescans, so the gain is small) |
 | GL balance per role | O(M x R) | O(R log M + M) |
 | AP and AR open balance | O(M x R) | O(R log M + M) |
 | bank balance per month end | O(M x R) | O(R log M + M) |
@@ -69,14 +69,14 @@ Seed 42, median of 7 runs
 
 | size | months | rows | generate s | unlinked s | check s (new) | check s (reference) | synthbiz pass | unlinked pass |
 |---|---|---|---|---|---|---|---|---|
-| small | 3 | 378 | 0.0010 | 0.0013 | 0.0002 | 0.0002 | 5/5 | 0/5 |
-| small | 12 | 1780 | 0.0032 | 0.0067 | 0.0011 | 0.0030 | 5/5 | 0/5 |
-| small | 36 | 5454 | 0.0116 | 0.0212 | 0.0034 | 0.0205 | 5/5 | 0/5 |
-| medium | 3 | 1213 | 0.0024 | 0.0065 | 0.0021 | 0.0009 | 5/5 | 0/5 |
-| medium | 12 | 5568 | 0.0118 | 0.0233 | 0.0067 | 0.0119 | 5/5 | 0/5 |
-| medium | 36 | 17161 | 0.0419 | 0.0824 | 0.0145 | 0.0832 | 5/5 | 0/5 |
-| large | 3 | 3547 | 0.0063 | 0.0133 | 0.0021 | 0.0028 | 5/5 | 0/5 |
-| large | 12 | 16498 | 0.0306 | 0.0617 | 0.0109 | 0.0400 | 5/5 | 0/5 |
-| large | 36 | 51136 | 0.0968 | 0.1926 | 0.0762 | 0.8970 | 5/5 | 0/5 |
+| small | 3 | 378 | 0.0006 | 0.0013 | 0.0002 | 0.0002 | 5/5 | 0/5 |
+| small | 12 | 1780 | 0.0033 | 0.0064 | 0.0010 | 0.0025 | 5/5 | 0/5 |
+| small | 36 | 5454 | 0.0108 | 0.0207 | 0.0032 | 0.0245 | 5/5 | 0/5 |
+| medium | 3 | 1213 | 0.0020 | 0.0044 | 0.0006 | 0.0008 | 5/5 | 0/5 |
+| medium | 12 | 5568 | 0.0098 | 0.0197 | 0.0032 | 0.0088 | 5/5 | 0/5 |
+| medium | 36 | 17161 | 0.0318 | 0.0626 | 0.0194 | 0.0939 | 5/5 | 0/5 |
+| large | 3 | 3547 | 0.0062 | 0.0122 | 0.0018 | 0.0028 | 5/5 | 0/5 |
+| large | 12 | 16498 | 0.0299 | 0.0630 | 0.0163 | 0.0525 | 5/5 | 0/5 |
+| large | 36 | 51136 | 0.1049 | 0.1857 | 0.2044 | 0.6829 | 5/5 | 0/5 |
 
-Timings depend on the machine, the Python version and what else is running. Rerun the command to get your own numbers. Short cases are dominated by noise, and in the 3 month cases the two check versions are about equal. Single runs of the large 36 month case varied between about 0.08 and 0.19 seconds for the new code on this machine.
+Timings depend on the machine, the Python version and what else is running. Rerun the command to get your own numbers. At 3 months both check versions finish in a few milliseconds or less, and the two are equal at small (0.0002 s each) and close at the other sizes, so noise dominates. At large with 36 months the new check took 0.2044 s against 0.6829 s for the reference in this run. The same case ran in about 0.08 s when timed alone outside the script, so the repeats inside the script are noisy for this case.

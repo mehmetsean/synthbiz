@@ -4,7 +4,7 @@ Status: Accepted
 
 ## Context
 
-`check` and `generate` computed every balance at every month end by scanning all rows once per month end. That costs O(M x R) for M month ends and R rows. With 36 months and size large, check took about 0.46 s against 0.10 s for generate, and check time grew about 12 times for 3 times the rows. The output files must stay byte for byte the same, and the runtime must stay stdlib only.
+`check` and `generate` computed every balance at every month end by scanning all rows once per month end. That costs O(M x R) for M month ends and R rows. In the reference column of the docs/benchmark.md table, size large took 0.0525 s at 12 months and 0.6829 s at 36 months, 13 times longer for 3.1 times the rows. These numbers come from that table. The output files must stay byte for byte the same, and the runtime must stay stdlib only.
 
 ## Decision
 
@@ -23,4 +23,4 @@ Options considered:
 
 ## Consequences
 
-Check time grows closer to linearly with rows. Messages, rule names, result order and public function names are unchanged. The private helpers `_gl_balance` and `_open_balance` are replaced by `_gl_balances` and `_open_balances`. The reference code must stay in sync with the old behavior, so it is not edited. Complexity and timings are in docs/benchmark.md.
+Check time grows closer to linearly with rows. Messages, rule names, result order and public function names are unchanged. The private helpers `_gl_balance` and `_open_balance` are replaced by `_gl_balances` and `_open_balances`. The reference code is a frozen copy of the old behavior, so it is not edited. `reconciling_items` sorts its ends, so callers may pass them in any order, and it reads a value only when the old code would have read it. Complexity and timings are in docs/benchmark.md.

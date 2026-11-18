@@ -6,7 +6,7 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ### Changed
 
-- check and generate no longer rescan every row for each month end. Balances are bucketed by month end in one pass. Output files are unchanged.
+- check no longer rescans every row for each month end. Balances are bucketed by month end in one pass. generate calls the same reconciling_items code, and its output files are unchanged (tests/test_examples.py compares them byte for byte).
 - LICENSE now says that commercial use needs a paid license and how to buy one.
 - Demo page redesign: design tokens, light and dark themes, a responsive form and a header with the source link.
 

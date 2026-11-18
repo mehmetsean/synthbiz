@@ -1,9 +1,9 @@
 """Baselines for the benchmark.
 
-reference_checks: the old per-month rescan version of the check functions,
-copied verbatim from before the single-pass change. It is kept as the timing
-baseline and as the test oracle. unlinked_rows: a simple one-off generator
-with random values, no shared keys and no ledger posting.
+run_checks and the check functions below it are the old per-month rescan
+version, copied verbatim from before the single-pass change. They are kept as
+the timing baseline and as the test oracle. unlinked_rows is a simple one-off
+generator with random values, no shared keys and no ledger posting.
 """
 
 import random

@@ -153,7 +153,7 @@ Run these from the repo folder.
 
 ## Performance
 
-`check` and `generate` bucket rows by month end with a binary search, so they read each row once instead of once per month end. `benchmarks/bench.py` times them against the old code and a simple unlinked generator, and fails if the results differ. See docs/benchmark.md for the commands and a results table.
+`check` buckets rows by month end with a binary search, so it reads each row once instead of once per month end. It is faster than before on long runs. `generate` calls the same `reconciling_items` code, and its output files are unchanged: `tests/test_examples.py` regenerates examples/seed42-3m and compares every file byte for byte with the committed copy. `benchmarks/bench.py` times `check` against the old code and a simple unlinked generator, and fails if the results differ. See docs/benchmark.md for the commands and a results table.
 
 ## Limits
 
