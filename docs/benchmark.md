@@ -11,7 +11,7 @@ For each size (small, medium, large) and each length (3, 12 and 36 months) with 
 - check (new): `synthbiz.check.run_checks` as it is now.
 - check (reference): the old per-month rescan code, kept in `benchmarks/baseline.py`.
 
-Before each timed run the script runs a full garbage collection and turns the collector off while it times, the same way Python's timeit module does, so a collection caused by an earlier case does not land inside a timing.
+Before each timed run the script runs a full garbage collection. While it times, it turns the collector off, as the timeit module does. This keeps a collection caused by an earlier case out of the timing.
 
 It also prints the total row count and how many of the 5 rules pass on the synthbiz data and on the baseline data.
 
@@ -50,7 +50,7 @@ M is the number of month ends, R is the total number of rows in the tables a fun
 
 | function | before | after |
 |---|---|---|
-| `month_ends_from_lines` | O(R log R) sort of all dates | O(R) min and max (the sort was small next to the rescans, so the gain is small) |
+| `month_ends_from_lines` | O(R log R) sort of all dates | O(R) min and max (the sort is O(R log R), which is cheap next to the old rescans, so the gain from this row is small in theory; no timing isolates it) |
 | GL balance per role | O(M x R) | O(R log M + M) |
 | AP and AR open balance | O(M x R) | O(R log M + M) |
 | bank balance per month end | O(M x R) | O(R log M + M) |
