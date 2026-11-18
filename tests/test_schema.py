@@ -5,6 +5,7 @@ from synthbiz.schema import (
     TABLE_NAMES,
     columns,
     data_dictionary,
+    money_columns,
     schema_dict,
 )
 
@@ -44,3 +45,11 @@ def test_data_dictionary_lists_every_table_and_column() -> None:
         assert f"## {name}" in md
         for c in columns(name):
             assert f"`{c}`" in md
+
+
+def test_money_columns() -> None:
+    assert money_columns("journal_lines") == ["debit_cents", "credit_cents"]
+    assert money_columns("chart_of_accounts") == []
+    for name in TABLE_NAMES:
+        for col in money_columns(name):
+            assert col in columns(name)

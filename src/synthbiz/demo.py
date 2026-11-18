@@ -10,6 +10,7 @@ from typing import Any
 from .check import Result, run_checks
 from .generate import SIZES, Params, generate
 from .io import read_dataset, verify_manifest, write_dataset
+from .schema import money_columns
 
 MAX_MONTHS = 24
 MAX_RATE = 0.2
@@ -42,7 +43,11 @@ def run_demo(
         results.append(Result("manifest", not manifest, manifest))
     out: dict[str, Any] = {
         "tables": {
-            name: {"rows": len(rows), "preview": rows[: max(preview_rows, 0)]}
+            name: {
+                "rows": len(rows),
+                "preview": rows[: max(preview_rows, 0)],
+                "money": money_columns(name),
+            }
             for name, rows in tables.items()
         },
         "labels": labels,

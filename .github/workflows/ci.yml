@@ -31,6 +31,31 @@ jobs:
       - run: python scripts/reproduce_readme.py --check
       - run: python benchmarks/bench.py --quick --repeat 1
 
+  # Optional job
+  browser:
+    name: browser
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - run: python -m pip install ".[browser]"
+      - run: python -m playwright install --with-deps chromium
+      - run: pip wheel . --no-deps -w _site
+      - run: cp site/* _site/
+      - run: |
+          python -c "import glob, json; json.dump({'wheel': glob.glob('_site/*.whl')[0].split('/')[-1]}, open('_site/wheel.json', 'w'))"
+      - run: |
+          python -m http.server 8000 --directory _site &
+          curl --silent --fail --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:8000/ > /dev/null
+          pytest tests/test_browser.py --no-cov
+        env:
+          SYNTHBIZ_DEMO_URL: http://localhost:8000/
+
   ci:
     name: ci
     needs: test

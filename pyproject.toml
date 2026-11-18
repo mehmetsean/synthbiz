@@ -14,6 +14,7 @@ dependencies = []
 
 [project.optional-dependencies]
 parquet = ["pyarrow>=15"]
+browser = ["pytest", "pytest-cov", "playwright==1.65.2"]
 dev = ["pytest", "pytest-cov", "hypothesis", "ruff", "mypy", "pyarrow>=15", "pyyaml"]
 
 [project.scripts]
@@ -24,6 +25,7 @@ packages = ["src/synthbiz"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["browser: needs Chromium and a running demo, set SYNTHBIZ_DEMO_URL"]
 addopts = "--cov=synthbiz --cov-report=term-missing --cov-fail-under=90"
 
 [tool.ruff]

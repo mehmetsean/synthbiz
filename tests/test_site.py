@@ -111,7 +111,6 @@ FOOTER_SENTENCES = [  # noqa: E501
     "This page loads Pyodide (MPL-2.0) and micropip (MPL-2.0) from cdn.jsdelivr.net at runtime. They are not bundled in this repo.",  # noqa: E501
     "Synthetic data for testing and learning only. Any match with a real business is unintended. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance.",  # noqa: E501
     "Copyright (c) 2026 Mehmet Tuzunkan. All rights reserved. You may view the code and run it to evaluate it. Commercial use needs a paid license from Mehmet Tuzunkan: https://www.linkedin.com/in/mstuzunkan",  # noqa: E501
-    "Source code on GitHub",
 ]
 
 
@@ -139,3 +138,25 @@ def test_chart_is_accessible_svg() -> None:
     assert "createElementNS" in js
     assert '"role", "img"' in js
     assert '"title"' in js and '"desc"' in js
+
+
+def test_single_source_link_in_header() -> None:
+    html = _html()
+    assert html.count("Source code on GitHub") == 1
+    header = html.split("<header>")[1].split("</header>")[0]
+    assert "https://github.com/mehmetsean/synthbiz" in header
+
+
+def test_money_formatting_and_scroll_hint_in_app() -> None:
+    js = (SITE / "app.js").read_text(encoding="utf-8")
+    assert "function formatDollars" in js
+    assert "t.money" in js
+    assert "Scroll sideways to see all columns." in js
+    assert "ResizeObserver" in js and "innerHTML" not in js
+
+
+def test_css_right_aligns_money_and_wraps_text() -> None:
+    css = (SITE / "style.css").read_text(encoding="utf-8")
+    assert "td.num" in css and "text-align: right" in css
+    assert "overflow-wrap: anywhere" in css
+    assert "scrollbar-color" in css

@@ -1,3 +1,5 @@
+import re
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -49,3 +51,22 @@ def test_pages_runs_on_main_and_by_hand() -> None:
 def test_codeql_can_run_by_hand() -> None:
     triggers = _triggers(_load(WORKFLOWS / "codeql.yml"))
     assert "workflow_dispatch" in triggers
+
+
+def test_browser_job_is_not_required_and_actions_are_pinned() -> None:
+    data = _load(WORKFLOWS / "ci.yml")
+    assert "browser" in data["jobs"]
+    assert data["jobs"]["ci"]["needs"] == "test"
+    for path in FILES:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if "uses:" in line:
+                assert re.search(r"@[0-9a-f]{40} # v\d", line), line
+
+
+def test_browser_extra_keeps_runtime_dependencies_empty() -> None:
+    root = WORKFLOWS.parent.parent
+    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    assert project["project"].get("dependencies", []) == []
+    assert "playwright" in " ".join(
+        project["project"]["optional-dependencies"]["browser"]
+    )

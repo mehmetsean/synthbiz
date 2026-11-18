@@ -1,5 +1,7 @@
+import csv
 import io
 import json
+import re
 import zipfile
 from pathlib import Path
 
@@ -10,7 +12,7 @@ from synthbiz.check import Result
 from synthbiz.demo import MAX_MESSAGES, demo_zip, run_demo
 from synthbiz.generate import Params, generate
 from synthbiz.io import verify_manifest, write_dataset
-from synthbiz.schema import TABLE_NAMES
+from synthbiz.schema import TABLE_NAMES, money_columns
 
 ARGS = (42, 3, "small", 0.05)
 
@@ -25,6 +27,15 @@ def test_run_demo_shape() -> None:
     rules = [c["rule"] for c in data["checks"]]
     assert rules[-1] == "manifest"
     assert all(c["ok"] for c in data["checks"])
+
+
+def test_money_columns_come_from_schema() -> None:
+    data = json.loads(run_demo(*ARGS))
+    for name, t in data["tables"].items():
+        assert t["money"] == money_columns(name)
+        for col in t["money"]:
+            assert all(re.fullmatch(r"-?\d+", str(r[col])) for r in t["preview"])
+    assert data["tables"]["journal_lines"]["money"] == ["debit_cents", "credit_cents"]
 
 
 def test_preview_rows() -> None:
@@ -84,3 +95,14 @@ def test_messages_are_capped(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = data["checks"][0]
     assert fake["ok"] is False
     assert fake["messages"] == [f"problem {i}" for i in range(MAX_MESSAGES)]
+
+
+def test_zip_keeps_raw_cents() -> None:
+    with zipfile.ZipFile(io.BytesIO(demo_zip(*ARGS))) as z:
+        text = z.read("journal_lines.csv").decode()
+    lines = text.splitlines()
+    head = lines[0].split(",")
+    col = head.index("debit_cents")
+    assert len(lines) > 1
+    for row in csv.reader(lines[1:]):
+        assert re.fullmatch(r"-?[0-9]+", row[col])
