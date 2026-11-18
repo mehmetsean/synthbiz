@@ -1,7 +1,7 @@
 """Tie-out checks that run on generated tables."""
 
 from bisect import bisect_left
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import date
 from typing import Any
@@ -47,13 +47,19 @@ def _role_accounts(tables: Tables, role: str) -> set[str]:
     }
 
 
-def _balances(ends: list[str], rows: Iterable[tuple[str, int]]) -> list[int]:
-    """Running total at each month end, from (date, amount) pairs."""
+def _balances(
+    ends: list[str],
+    rows: Iterable[tuple[str, dict[str, Any]]],
+    amount: Callable[[dict[str, Any]], int],
+) -> list[int]:
+    """Running total at each month end, from (date, row) pairs."""
+    if not ends:
+        return []
     sums = [0] * len(ends)
-    for day, amount in rows:
+    for day, row in rows:
         i = bisect_left(ends, day)
         if i < len(ends):
-            sums[i] += amount
+            sums[i] += amount(row)
     total = 0
     for i, value in enumerate(sums):
         total += value
@@ -61,20 +67,29 @@ def _balances(ends: list[str], rows: Iterable[tuple[str, int]]) -> list[int]:
     return sums
 
 
+def _net(row: dict[str, Any]) -> int:
+    return int(row["debit_cents"]) - int(row["credit_cents"])
+
+
+def _cents(row: dict[str, Any]) -> int:
+    return int(row["amount_cents"])
+
+
 def _gl_balances(
     tables: Tables, ends: list[str], roles: dict[str, bool]
 ) -> dict[str, list[int]]:
-    """GL balance at each month end per role. The flag says debit normal."""
-    accounts = {role: _role_accounts(tables, role) for role in roles}
-    pairs: dict[str, list[tuple[str, int]]] = {role: [] for role in roles}
-    for r in tables["journal_lines"]:
-        for role, ids in accounts.items():
-            if r["account_id"] in ids:
-                amount = int(r["debit_cents"]) - int(r["credit_cents"])
-                pairs[role].append((str(r["posting_date"]), amount))
+    """GL balance at each month end per role. The flag marks debit-normal roles."""
+    if not ends:
+        return {role: [] for role in roles}
     out: dict[str, list[int]] = {}
     for role, debit_normal in roles.items():
-        totals = _balances(ends, pairs[role])
+        ids = _role_accounts(tables, role)
+        rows = (
+            (str(r["posting_date"]), r)
+            for r in tables["journal_lines"]
+            if r["account_id"] in ids
+        )
+        totals = _balances(ends, rows, _net)
         out[role] = totals if debit_normal else [-t for t in totals]
     return out
 
@@ -98,12 +113,8 @@ def _open_balances(
     set_date: str,
     ends: list[str],
 ) -> list[int]:
-    billed = _balances(
-        ends, ((str(r[inv_date]), int(r["amount_cents"])) for r in invoices)
-    )
-    settled = _balances(
-        ends, ((str(r[set_date]), int(r["amount_cents"])) for r in settlements)
-    )
+    billed = _balances(ends, ((str(r[inv_date]), r) for r in invoices), _cents)
+    settled = _balances(ends, ((str(r[set_date]), r) for r in settlements), _cents)
     return [x - y for x, y in zip(billed, settled, strict=True)]
 
 
@@ -142,16 +153,21 @@ def reconciling_items(tables: Tables, ends: list[date]) -> list[dict[str, Any]]:
         gl_dates[str(p["payment_id"])] = ("AP_PAYMENT", str(p["payment_date"]))
     for r in tables["ar_receipts"]:
         gl_dates[str(r["receipt_id"])] = ("AR_RECEIPT", str(r["receipt_date"]))
-    names = [me.isoformat() for me in ends]
+    names = sorted(me.isoformat() for me in ends)
+    if not names:
+        return []
     per_end: list[list[dict[str, Any]]] = [[] for _ in names]
     for b in tables["bank_transactions"]:
         ref = gl_dates.get(str(b["ref_id"]))
         if ref is None or str(b["ref_type"]) != ref[0]:
             continue
         bank_date = str(b["bank_date"])
+        window = range(bisect_left(names, ref[1]), bisect_left(names, bank_date))
+        if not window:
+            continue
         amount = int(b["amount_cents"])
         kind = "OUTSTANDING_PAYMENT" if amount < 0 else "DEPOSIT_IN_TRANSIT"
-        for i in range(bisect_left(names, ref[1]), bisect_left(names, bank_date)):
+        for i in window:
             per_end[i].append(
                 {
                     "month_end": names[i],
@@ -174,11 +190,7 @@ def check_bank_tie(tables: Tables) -> list[str]:
     items = reconciling_items(tables, ends)
     names = [me.isoformat() for me in ends]
     banks = _balances(
-        names,
-        (
-            (str(b["bank_date"]), int(b["amount_cents"]))
-            for b in tables["bank_transactions"]
-        ),
+        names, ((str(b["bank_date"]), b) for b in tables["bank_transactions"]), _cents
     )
     adjusts: dict[str, int] = {}
     for i in items:
