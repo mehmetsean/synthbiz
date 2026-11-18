@@ -40,7 +40,7 @@ These are installed with the dev extra, together with pyarrow. They are used to 
 
 ## Browser test tool
 
-Installed with the browser extra. Used to test the demo page only.
+Installed with the browser extra, together with pytest and pytest-cov (listed above). Used to test the demo page only.
 
 | Part | License |
 | --- | --- |
