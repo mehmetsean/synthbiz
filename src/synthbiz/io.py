@@ -186,7 +186,7 @@ def _too_many_rows(name: str) -> ValueError:
 
 
 class _Budget:
-    """Running row total over every file in a folder."""
+    """Row total."""
 
     def __init__(self) -> None:
         self.total = 0
@@ -225,24 +225,27 @@ def _read_csv(
 ) -> list[dict[str, Any]]:
     name = path.name
     budget = budget or _Budget()
-    filled = 0
-    blanks = 0
+    data_rows = 0
+    pending = 0
     records: list[tuple[int, list[str]]] = []
     try:
         with path.open(newline="", encoding="utf-8-sig") as f:
             reader = csv.reader(f, strict=True)
             for row in reader:
-                records.append((reader.line_num, row))
-                if not row:
-                    blanks += 1
-                    if blanks > MAX_ROWS_PER_FILE:
-                        raise _too_many_rows(name)
+                if not records:
+                    records.append((reader.line_num, row))
                     continue
-                filled += 1
-                if filled > 1:
-                    if filled > MAX_ROWS_PER_FILE + 1:
-                        raise _too_many_rows(name)
-                    budget.add(name, 1)
+                if not row:
+                    pending = pending or reader.line_num
+                    continue
+                if pending:
+                    records.append((pending, []))
+                    pending = 0
+                data_rows += 1
+                if data_rows > MAX_ROWS_PER_FILE:
+                    raise _too_many_rows(name)
+                budget.add(name, 1)
+                records.append((reader.line_num, row))
     except UnicodeDecodeError:
         raise ValueError(f"{name}: not valid UTF-8") from None
     except csv.Error as e:

@@ -248,3 +248,82 @@ def test_parquet_row_groups_are_summed_before_reading(
     monkeypatch.setattr(synthbiz.io, "MAX_ROWS_PER_FILE", COA_ROWS - 1)
     with pytest.raises(ValueError, match="more than 10 rows"):
         _read_one(path)
+
+
+def test_csv_many_trailing_blank_lines(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = _coa(tmp_path, "csv")
+    with path.open("a") as f:
+        f.write("\n" * (COA_ROWS + 5))
+    monkeypatch.setattr(synthbiz.io, "MAX_ROWS_PER_FILE", COA_ROWS)
+    assert len(_read_one(path)) == COA_ROWS
+
+
+def _stub_parquet(monkeypatch: pytest.MonkeyPatch, path: Path) -> None:
+    pq = pytest.importorskip("pyarrow.parquet")
+    real = pq.ParquetFile(path)
+    table = real.read()
+
+    class Meta:
+        num_rows = 1
+        num_row_groups = 1
+
+        def row_group(self, i: int) -> Any:
+            class Group:
+                num_rows = 1
+
+            return Group()
+
+    class Stub:
+        metadata = Meta()
+
+        def __init__(self, _path: Path) -> None:
+            pass
+
+        def read(self) -> Any:
+            return table
+
+    monkeypatch.setattr(pq, "ParquetFile", Stub)
+
+
+def test_parquet_post_read_guard(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = _coa(tmp_path, "parquet")
+    _stub_parquet(monkeypatch, path)
+    monkeypatch.setattr(synthbiz.io, "MAX_ROWS_PER_FILE", COA_ROWS - 1)
+    with pytest.raises(ValueError, match="more than 10 rows"):
+        _read_one(path)
+
+
+def test_parquet_post_read_total_top_up(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = _coa(tmp_path, "parquet")
+    _stub_parquet(monkeypatch, path)
+    monkeypatch.setattr(synthbiz.io, "MAX_TOTAL_ROWS", COA_ROWS - 1)
+    with pytest.raises(ValueError, match="folder has more than 10 rows"):
+        _read_one(path)
+
+
+def test_csv_only_blank_lines_is_empty(tmp_path: Path) -> None:
+    path = tmp_path / "vendors.csv"
+    path.write_text("\n\n\n")
+    with pytest.raises(ValueError, match="vendors.csv: file is empty"):
+        _read_csv(path, columns("vendors"), {})
+
+
+def test_parquet_read_failure_is_one_line(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = _coa(tmp_path, "parquet")
+    _stub_parquet(monkeypatch, path)
+    import pyarrow.parquet as pq
+
+    def boom(self: Any) -> None:
+        raise OSError("bad page")
+
+    monkeypatch.setattr(pq.ParquetFile, "read", boom)
+    with pytest.raises(ValueError, match="not a readable Parquet file"):
+        _read_one(path)
