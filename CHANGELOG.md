@@ -7,12 +7,16 @@ All notable changes are listed here. The format follows Keep a Changelog.
 ### Changed
 
 - Demo previews show money columns as US dollars, for example $12,345.67, right-aligned. The zip download keeps raw cents.
-- Demo preview tables show a short hint and a visible scrollbar when they are wider than the screen. Long text cells wrap, and long anomaly details open with a keyboard-friendly toggle.
+- The demo sends the list of money columns with each table preview. The list comes from the schema.
+- Demo preview tables show a hint when a table is wider than its box. Long text cells wrap. Cells over 60 characters, such as anomaly details, sit behind a keyboard-accessible toggle.
 - The demo page has one source link, in the header.
 
 ### Added
 
 - A browser test of the Generate button, and a CI job that runs it in Chromium. It is not part of the required ci check.
+- synthbiz.schema.money_columns(table) returns the money columns of a table.
+- A new optional extra, browser, installs Playwright for that test. Runtime dependencies are still empty.
+- A test that the zip download keeps raw cents.
 
 ## 0.1.2 - 2026-11-17
 
