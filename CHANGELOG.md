@@ -14,7 +14,7 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ### Fixed
 
-- Crafted folders with a huge date span no longer exhaust memory in check. check stops with a one-line error for a date span above 1200 months or for more than 200,000 reconciling items, instead of building the full list.
+- check stops with a one-line error for a date span above 1200 months or for more than 200,000 reconciling items, instead of building the full list.
 
 ### Added
 

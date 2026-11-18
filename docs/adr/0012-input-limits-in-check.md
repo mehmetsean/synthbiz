@@ -18,7 +18,7 @@ Options considered:
 - Limit the span only. It stops the 120,000 month case, but 1200 months with 3,000 long-open bank rows would list 3,600,000 items, above the limit.
 - Limit the span and the item count (chosen). Both inputs of the growth are bounded.
 
-Why these numbers: 1200 months is 100 years. The largest run in benchmarks/bench.py uses 36 months. For the item limit, the largest data generate can make (size large, 1200 months, anomaly rate 0.5, seed 42) has 29,688 reconciling items, so 200,000 leaves about 6.7 times headroom. To check that number:
+Why these numbers: 1200 months is 100 years. The largest run in benchmarks/bench.py uses 36 months. For the item limit, generate with size large, 1200 months, anomaly rate 0.5 and seed 42 makes 29,688 reconciling items, so 200,000 leaves about 6.7 times headroom. To check that number:
 
 ```
 python -c "import sys; sys.path.insert(0,'src'); from synthbiz.generate import generate, Params; print(len(generate(Params(size='large', months=1200, anomaly_rate=0.5)).tables['reconciling_items']))"
