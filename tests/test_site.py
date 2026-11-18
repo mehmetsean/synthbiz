@@ -152,7 +152,7 @@ def test_money_formatting_and_scroll_hint_in_app() -> None:
     assert "function formatDollars" in js
     assert "t.money" in js
     assert "Scroll sideways to see all columns." in js
-    assert "<details" not in js and '"details"' in js and '"summary"' in js
+    assert "ResizeObserver" in js and "innerHTML" not in js
 
 
 def test_css_right_aligns_money_and_wraps_text() -> None:

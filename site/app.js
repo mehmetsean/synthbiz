@@ -40,23 +40,29 @@ const WRAP_TEXT = 24;
 
 function makeCell(value, isMoney) {
   const text = String(value);
+  const chars = Array.from(text);
   if (isMoney && /^-?\d+$/.test(text)) return el("td", formatDollars(text), "num");
   const td = el("td");
-  if (text.length <= LONG_TEXT) {
+  if (chars.length <= LONG_TEXT) {
     td.textContent = text;
-    if (text.length > WRAP_TEXT) td.className = "wrap";
+    if (chars.length > WRAP_TEXT) td.className = "wrap";
     return td;
   }
   td.className = "long";
   const box = el("details");
-  box.appendChild(el("summary", text.slice(0, LONG_TEXT) + "..."));
+  box.appendChild(el("summary", chars.slice(0, LONG_TEXT).join("") + "..."));
   box.appendChild(el("p", text));
   td.appendChild(box);
   return td;
 }
 
-function updateHint(wrap, hint) {
-  hint.hidden = wrap.scrollWidth <= wrap.clientWidth;
+function watchHint(wrap, table, hint) {
+  const update = () => {
+    hint.hidden = wrap.scrollWidth <= wrap.clientWidth;
+  };
+  const observer = new ResizeObserver(update);
+  observer.observe(wrap);
+  observer.observe(table);
 }
 
 function makeTable(title, rows, columns, money) {
@@ -89,7 +95,7 @@ function makeTable(title, rows, columns, money) {
   table.appendChild(body);
   wrap.appendChild(table);
   box.appendChild(wrap);
-  box.updateHint = () => updateHint(wrap, hint);
+  watchHint(wrap, table, hint);
   return box;
 }
 
@@ -169,10 +175,6 @@ function renderChart(data) {
   box.appendChild(makeTable("Anomaly counts by type", asTable, ["anomaly_type", "count"]));
 }
 
-function refreshHints() {
-  for (const box of document.querySelectorAll(".table-box")) box.updateHint();
-}
-
 function render(data) {
   renderSummary(data);
   renderChart(data);
@@ -203,7 +205,6 @@ function render(data) {
     tables.appendChild(makeTable(title, t.preview, cols, t.money));
   }
   document.getElementById("results").hidden = false;
-  refreshHints();
 }
 
 async function generate(event) {
@@ -271,7 +272,6 @@ async function start() {
   }
 }
 
-window.addEventListener("resize", refreshHints);
 document.getElementById("form").addEventListener("submit", generate);
 downloadBtn.addEventListener("click", download);
 start();
