@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
-from .dates import last_day_of_month
+from .dates import in_close_window, last_day_of_month, previous_period
 from .schema import TABLE_NAMES, schema_dict
 
 MAX_MONTHS = 1200
@@ -285,6 +285,14 @@ def _later_than_invoice(
     return out
 
 
+def _close_window_line(row: dict[str, Any]) -> bool:
+    try:
+        d = date.fromisoformat(str(row["posting_date"]))
+    except ValueError:
+        return False
+    return str(row["period"]) == previous_period(d) and in_close_window(d)
+
+
 def check_dates(tables: Tables, labels: Labels) -> list[str]:
     errors: list[str] = []
     for name in ("ap_invoices", "ar_invoices"):
@@ -312,6 +320,8 @@ def check_dates(tables: Tables, labels: Labels) -> list[str]:
     for r in tables["journal_lines"]:
         month = str(r["posting_date"])[:7]
         if str(r["period"]) != month and str(r["je_id"]) not in planted_jes:
+            if _close_window_line(r):
+                continue
             errors.append(
                 f"journal_lines {_safe(r['line_id'])}: period {_safe(r['period'])} "
                 f"does not match posting date {_safe(r['posting_date'])} "

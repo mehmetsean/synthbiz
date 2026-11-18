@@ -11,7 +11,7 @@ from datetime import date
 from typing import Any
 
 from synthbiz.check import Labels, Result, Tables, _safe
-from synthbiz.dates import last_day_of_month, month_ends
+from synthbiz.dates import is_business_day, last_day_of_month, month_ends
 from synthbiz.generate import Params
 from synthbiz.schema import TABLE_NAMES, schema_dict
 
@@ -209,6 +209,19 @@ def _later_than_invoice(
     return out
 
 
+def _in_close_window(r: dict[str, Any]) -> bool:
+    d = date.fromisoformat(str(r["posting_date"]))
+    prev = date(d.year - (d.month == 1), d.month - 1 or 12, 1)
+    if str(r["period"]) != f"{prev.year}-{prev.month:02d}":
+        return False
+    seen = 0
+    day = date(d.year, d.month, 1)
+    while day <= d:
+        seen += is_business_day(day)
+        day = date.fromordinal(day.toordinal() + 1)
+    return seen < 3 or (seen == 3 and is_business_day(d))
+
+
 def check_dates(tables: Tables, labels: Labels) -> list[str]:
     errors: list[str] = []
     for name in ("ap_invoices", "ar_invoices"):
@@ -236,6 +249,8 @@ def check_dates(tables: Tables, labels: Labels) -> list[str]:
     for r in tables["journal_lines"]:
         month = str(r["posting_date"])[:7]
         if str(r["period"]) != month and str(r["je_id"]) not in planted_jes:
+            if _in_close_window(r):
+                continue
             errors.append(
                 f"journal_lines {_safe(r['line_id'])}: period {_safe(r['period'])} "
                 f"does not match posting date {_safe(r['posting_date'])} "

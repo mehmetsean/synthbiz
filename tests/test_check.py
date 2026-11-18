@@ -170,3 +170,55 @@ def test_messages_escape_data_values() -> None:
         assert "\x1b" not in line
         assert "\x07" not in line
         assert "\\x1b" in line
+
+
+def _line(date_text: str, period: str) -> Tables:
+    row = {
+        "line_id": "JL-1",
+        "je_id": "JE-1",
+        "posting_date": date_text,
+        "period": period,
+    }
+    return {"journal_lines": [row], "ap_invoices": [], "ar_invoices": []} | {
+        "ap_payments": [],
+        "ar_receipts": [],
+    }
+
+
+def test_previous_period_allowed_in_close_window() -> None:
+    for day, period in [
+        ("2025-03-03", "2025-02"),
+        ("2025-03-05", "2025-02"),
+        ("2025-01-02", "2024-12"),
+        ("2025-01-06", "2024-12"),
+    ]:
+        assert check_dates(_line(day, period), []) == []
+
+
+def test_previous_period_on_business_day_four_fails() -> None:
+    errs = check_dates(_line("2025-03-06", "2025-02"), [])
+    assert len(errs) == 1
+    assert "not a labeled anomaly" in errs[0]
+    label = [
+        {
+            "table": "journal_lines",
+            "row_id": "JL-1",
+            "anomaly_type": "out_of_period_entry",
+        }
+    ]
+    assert check_dates(_line("2025-03-06", "2025-02"), label) == []
+
+
+def test_two_months_back_fails_even_in_close_window() -> None:
+    assert check_dates(_line("2025-03-03", "2025-01"), [])
+    assert check_dates(_line("2025-03-03", "2025-04"), [])
+    assert check_dates(_line("2025-03-03", "2024-12"), [])
+
+
+def test_extreme_dates_do_not_crash() -> None:
+    assert check_dates(_line("9999-12-31", "9999-11"), [])
+    assert check_dates(_line("0001-01-02", "0000-12"), [])
+
+
+def test_bad_posting_date_is_a_finding_not_a_crash() -> None:
+    assert check_dates(_line("not-a-date", "2025-02"), [])

@@ -103,3 +103,30 @@ def month_ends(start: date, months: int) -> list[date]:
         if m == 13:
             y, m = y + 1, 1
     return out
+
+
+CLOSE_WINDOW_BUSINESS_DAYS = 3
+
+
+def nth_business_day(year: int, month: int, n: int) -> date:
+    return add_business_days(date(year, month, 1), n - 1)
+
+
+@cache
+def _close_end(year: int, month: int) -> date | None:
+    try:
+        return nth_business_day(year, month, CLOSE_WINDOW_BUSINESS_DAYS)
+    except (ValueError, OverflowError):
+        return None
+
+
+def in_close_window(d: date) -> bool:
+    """True on or before the last close day of the month."""
+    end = _close_end(d.year, d.month)
+    return end is not None and d <= end
+
+
+def previous_period(d: date) -> str:
+    if d.month == 1:
+        return f"{d.year - 1}-12"
+    return f"{d.year}-{d.month - 1:02d}"

@@ -60,3 +60,25 @@ def test_month_ends() -> None:
     ends = month_ends(date(2025, 11, 5), 3)
     assert ends == [date(2025, 11, 30), date(2025, 12, 31), date(2026, 1, 31)]
     assert month_ends(date(2024, 2, 1), 1) == [date(2024, 2, 29)]
+
+
+def test_close_window_helpers() -> None:
+    from synthbiz.dates import (
+        CLOSE_WINDOW_BUSINESS_DAYS,
+        in_close_window,
+        nth_business_day,
+        previous_period,
+    )
+
+    assert CLOSE_WINDOW_BUSINESS_DAYS == 3
+    assert nth_business_day(2025, 1, 3) == date(2025, 1, 6)
+    assert nth_business_day(2025, 3, 3) == date(2025, 3, 5)
+    assert in_close_window(date(2025, 3, 5))
+    assert not in_close_window(date(2025, 3, 6))
+    assert in_close_window(date(2025, 3, 1))
+    assert in_close_window(date(2025, 1, 2))
+    assert not in_close_window(date(2025, 1, 7))
+    assert not in_close_window(date(9999, 12, 31))
+    assert not in_close_window(date(1, 1, 5))
+    assert previous_period(date(2025, 1, 2)) == "2024-12"
+    assert previous_period(date(2025, 3, 5)) == "2025-02"
