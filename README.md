@@ -1,10 +1,11 @@
 # synthbiz
 
-[![coverage](https://mehmetsean.github.io/synthbiz/badges/coverage.svg)](https://mehmetsean.github.io/synthbiz/badges/coverage.svg) [![tests](https://mehmetsean.github.io/synthbiz/badges/tests.svg)](https://mehmetsean.github.io/synthbiz/badges/tests.svg)
+[![coverage](https://mehmetsean.github.io/synthbiz/badges/coverage.svg)](https://github.com/mehmetsean/synthbiz/actions/workflows/pages.yml) [![tests](https://mehmetsean.github.io/synthbiz/badges/tests.svg)](https://github.com/mehmetsean/synthbiz/actions/workflows/pages.yml)
 
-The badges are built by this repo on each Pages build of main. To check the numbers yourself, run `pytest` after `pip install -e ".[dev]"`.
+The badges show the numbers from the last successful Pages build of main, so they can lag behind the latest commit. To rebuild them yourself, run these after `pip install -e ".[dev]"`:
 
-Seeded synthetic finance data for one fictional small manufacturer. The tables link to each other and reconcile, and known problems are planted and labeled.
+        pytest --junitxml=badge-check/junit.xml --cov-report=json:badge-check/coverage.json
+        python scripts/make_badges.py badge-check/coverage.json badge-check/junit.xml badge-check/badges
 
 ## Who it is for
 
