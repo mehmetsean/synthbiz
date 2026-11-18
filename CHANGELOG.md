@@ -15,7 +15,7 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ### Fixed
 
-- A Parquet file that declares more than 3,000,000 rows is refused from its metadata. A CSV file is stopped once it passes 3,000,000 rows. The same applies to a folder with more than 5,000,000 rows in total.
+- A Parquet file that declares more than 3,000,000 rows is refused from its metadata. A CSV file is stopped once it passes 3,000,000 rows. A folder with more than 5,000,000 rows in total is stopped too.
 - check stops with a one-line error for a date span above 1200 months or for more than 200,000 reconciling items, instead of building the full list.
 
 ### Added
