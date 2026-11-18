@@ -6,9 +6,15 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ### Changed
 
+- generate refuses more than 1200 months.
+- check and the readers accept only YYYY-MM-DD dates. Other forms such as 20240131 are reported as not a valid date.
 - check no longer rescans every row for each month end. Balances are bucketed by month end in one pass. generate calls the same reconciling_items code, and its output files are unchanged (tests/test_examples.py compares them byte for byte).
 - LICENSE now says that commercial use needs a paid license and how to buy one.
 - Demo page redesign: design tokens, light and dark themes, a responsive form and a header with the source link.
+
+### Fixed
+
+- Crafted folders with a huge date span no longer exhaust memory in check. check stops with a one-line error above 1200 months or 1,000,000 reconciling items.
 
 ### Added
 

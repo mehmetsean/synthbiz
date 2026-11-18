@@ -11,3 +11,4 @@
 - [0009 The demo runs in the browser with Pyodide, script pinned with SRI](0009-browser-demo-with-pyodide.md)
 - [0010 All rights reserved from 0.1.1](0010-all-rights-reserved.md)
 - [0011 Single-pass month-end balances](0011-single-pass-month-end-balances.md)
+- [0012 Input limits in check](0012-input-limits-in-check.md)
