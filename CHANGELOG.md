@@ -6,6 +6,7 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ### Changed
 
+- Integer columns accept only an optional minus sign and 1 to 18 ASCII digits. Forms such as " 5", "1_000" and "+5" are reported as not a valid integer.
 - generate refuses a run longer than 1200 months.
 - check and the readers accept only YYYY-MM-DD dates. Other forms such as 20240131 are reported as not a valid date.
 - check no longer rescans every row for each month end. Balances are bucketed by month end in one pass. generate calls the same reconciling_items code, and its output files are unchanged (tests/test_examples.py compares them byte for byte).
@@ -14,6 +15,7 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ### Fixed
 
+- A Parquet file that declares more than 3,000,000 rows is refused from its metadata, and a CSV file stops at that count, before the rest is read into memory.
 - check stops with a one-line error for a date span above 1200 months or for more than 200,000 reconciling items, instead of building the full list.
 
 ### Added
