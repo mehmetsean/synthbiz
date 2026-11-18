@@ -14,7 +14,7 @@ dependencies = []
 
 [project.optional-dependencies]
 parquet = ["pyarrow>=15"]
-browser = ["pytest", "playwright"]
+browser = ["pytest", "pytest-cov", "playwright"]
 dev = ["pytest", "pytest-cov", "hypothesis", "ruff", "mypy", "pyarrow>=15", "pyyaml"]
 
 [project.scripts]
