@@ -9,6 +9,9 @@ from typing import Any
 from .dates import last_day_of_month
 from .schema import TABLE_NAMES, schema_dict
 
+MAX_MONTHS = 1200
+MAX_RECONCILING_ITEMS = 1_000_000
+
 Tables = dict[str, list[dict[str, Any]]]
 Labels = list[dict[str, Any]]
 
@@ -31,6 +34,11 @@ def month_ends_from_lines(lines: list[dict[str, Any]]) -> list[date]:
     dates = [str(r["posting_date"]) for r in lines]
     first = date.fromisoformat(min(dates))
     last = date.fromisoformat(max(dates))
+    span = (last.year - first.year) * 12 + last.month - first.month + 1
+    if span > MAX_MONTHS:
+        raise ValueError(
+            f"journal_lines span {span} months; check handles at most {MAX_MONTHS}"
+        )
     out: list[date] = []
     y, m = first.year, first.month
     while (y, m) <= (last.year, last.month):
@@ -157,6 +165,7 @@ def reconciling_items(tables: Tables, ends: list[date]) -> list[dict[str, Any]]:
     if not names:
         return []
     per_end: list[list[dict[str, Any]]] = [[] for _ in names]
+    count = 0
     for b in tables["bank_transactions"]:
         ref = gl_dates.get(str(b["ref_id"]))
         if ref is None or str(b["ref_type"]) != ref[0]:
@@ -165,6 +174,12 @@ def reconciling_items(tables: Tables, ends: list[date]) -> list[dict[str, Any]]:
         window = range(bisect_left(names, ref[1]), bisect_left(names, bank_date))
         if not window:
             continue
+        count += len(window)
+        if count > MAX_RECONCILING_ITEMS:
+            raise ValueError(
+                f"more than {MAX_RECONCILING_ITEMS} reconciling items; "
+                "check the bank and GL dates"
+            )
         amount = int(b["amount_cents"])
         kind = "OUTSTANDING_PAYMENT" if amount < 0 else "DEPOSIT_IN_TRANSIT"
         for i in window:

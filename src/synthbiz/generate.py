@@ -6,7 +6,7 @@ from datetime import date, timedelta
 from . import builder as bld
 from .anomalies import inject
 from .builder import Builder, Row, nonround
-from .check import month_ends_from_lines, reconciling_items
+from .check import MAX_MONTHS, month_ends_from_lines, reconciling_items
 from .dates import add_business_days, business_days, month_ends, next_business_day
 from .names import company_name, customer_names, vendor_names
 from .schema import TABLE_NAMES
@@ -121,6 +121,8 @@ def generate(params: Params) -> Dataset:
         raise ValueError("anomaly rate must be between 0 and 1")
     if params.months < 1:
         raise ValueError("months must be at least 1")
+    if params.months > MAX_MONTHS:
+        raise ValueError(f"months must be at most {MAX_MONTHS}")
     size = SIZES[params.size]
     start = params.start_date
     end = month_ends(start, params.months)[-1]

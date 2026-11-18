@@ -3,6 +3,7 @@
 import csv
 import hashlib
 import json
+import re
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -188,6 +189,8 @@ def _check_value(name: str, where: str, column: str, kind: str, value: str) -> N
         if kind == "integer":
             int(value)
         elif kind == "date":
+            if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", value):
+                raise ValueError(value)
             date.fromisoformat(value)
     except ValueError:
         raise ValueError(f"{name}: {where}: {column} is not a valid {kind}") from None
