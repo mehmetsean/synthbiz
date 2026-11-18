@@ -173,12 +173,12 @@ By default the ledger also holds legitimate activity that looks a little like an
 - human_weekend_close: one manual accrual on a weekend at each quarter end.
 - round_rent_accrual: the same round amount every month.
 - round_retainer_invoice: one vendor, the same round amount, invoice number RET-YYYYMM.
-- recurring_fixed_invoice: one vendor, the same amount every week, invoice numbers that differ by one digit (FR-00123, FR-00124).
+- recurring_fixed_invoice: one vendor, the same amount every week, invoice numbers one apart (FR-00123, FR-00124).
 - occasional_poster: a rare poster, the CFO each quarter end and a tax accountant once a year.
 
-Why: a rule that flags weekends, missing approvers, round amounts or similar invoice numbers should flag these rows too. On a dataset with only planted anomalies every such rule would score a perfect precision, which says nothing. With these rows the false alarm rate of a rule shows up in the numbers. Rows that the rule flags and the labels do not list count as false alarms.
+Why: a rule that flags weekends, missing approvers, round amounts or similar invoice numbers should flag these rows too. On a dataset with only planted anomalies, a rule that flags weekends would score a precision of 1.0, which says nothing about the rule. With these rows the false alarm rate of a rule shows up in the numbers. Rows that the rule flags and the labels do not list count as false alarms.
 
-The background step runs after the planted anomalies, so every other row, id and value is the same with background on or off. Turn it off with `synthbiz generate --no-background`. manifest.json then records `"background": false` and every count is 0.
+The background step runs after the planted anomalies, so every base and anomaly row, with its id and values, is the same with background on or off. Only bank_txn_id (renumbered after sorting) and reconciling_items (rebuilt) differ. Turn it off with `synthbiz generate --no-background`. manifest.json then sets `parameters.background` to false and every count in `background_counts` is 0. The output matches 0.1.2 byte for byte only while the rotation stays within the first two anomaly types (at most two planted anomalies).
 
 ## Performance
 
