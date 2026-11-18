@@ -75,7 +75,8 @@ def _journal_key(r: dict[str, Any]) -> tuple[Any, ...]:
 
 
 @pytest.mark.parametrize("seed", [1, 2, 42])
-def test_background_off_rows_are_a_subset(seed: int) -> None:
+def test_background_off_rows_are_a_subset_except_renumbered_ids(seed: int) -> None:
+    # bank_txn_id is renumbered after the sort, so bank rows are compared without it
     on = make(seed=seed, anomaly_rate=0.1)
     off = make(background=False, seed=seed, anomaly_rate=0.1)
     assert on.labels == off.labels
@@ -342,3 +343,24 @@ def test_checks_pass_with_background_for_any_seed(
     assert off.labels == ds.labels
     bg = {x["row_id"] for x in ds.background}
     assert not bg & {x["row_id"] for x in ds.labels}
+
+
+@settings(max_examples=40, deadline=None)
+@given(
+    start=st.dates(min_value=date(2024, 1, 1), max_value=date(2027, 12, 31)),
+    months=st.integers(min_value=1, max_value=3),
+    seed=st.integers(min_value=0, max_value=200),
+)
+def test_out_of_period_never_in_close_window_any_start(
+    start: date, months: int, seed: int
+) -> None:
+    from synthbiz.dates import in_close_window
+
+    if not business_days(start, month_ends(start, months)[-1]):
+        return
+    ds = generate(Params(seed=seed, months=months, anomaly_rate=1.0, start_date=start))
+    lines = {r["line_id"]: r for r in ds.tables["journal_lines"]}
+    for lab in ds.labels:
+        if lab["anomaly_type"] == "out_of_period_entry":
+            day = date.fromisoformat(lines[lab["row_id"]]["posting_date"])
+            assert not in_close_window(day)

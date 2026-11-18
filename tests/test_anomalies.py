@@ -2,7 +2,11 @@ from collections import Counter
 from datetime import date
 from typing import Any
 
-from synthbiz.anomalies import ANOMALY_TYPES
+import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
+
+from synthbiz.anomalies import ANOMALY_TYPES, _typo
 from synthbiz.builder import APPROVAL_LIMIT_CENTS
 from synthbiz.check import run_checks
 from synthbiz.dates import is_holiday
@@ -222,3 +226,37 @@ def test_out_of_period_never_in_close_window() -> None:
         assert labels
         for lab in labels:
             assert not in_close_window(date.fromisoformat(row(ds, lab)["posting_date"]))
+
+
+@pytest.mark.parametrize("number", ["1", "11", "12", "123", "9999", "a1"])
+def test_typo_examples(number: str) -> None:
+    import random
+
+    for seed in range(20):
+        out = _typo(number, random.Random(seed))
+        assert out and out != number
+        assert _is_one_edit(number, out)
+
+
+def _is_one_edit(a: str, b: str) -> bool:
+    deletes = {a[:i] + a[i + 1 :] for i in range(len(a))}
+    doubles = {a[: i + 1] + a[i:] for i in range(len(a))}
+    swaps = {
+        a[:i] + a[i + 1] + a[i] + a[i + 2 :]
+        for i in range(len(a) - 1)
+        if a[i] != a[i + 1]
+    }
+    return b in deletes | doubles | swaps
+
+
+@settings(max_examples=100, deadline=None)
+@given(
+    number=st.text(alphabet="0123456789", min_size=1, max_size=8),
+    seed=st.integers(min_value=0, max_value=1000),
+)
+def test_typo_property(number: str, seed: int) -> None:
+    import random
+
+    out = _typo(number, random.Random(seed))
+    assert out and out != number
+    assert _is_one_edit(number, out)
