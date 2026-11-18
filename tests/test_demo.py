@@ -1,3 +1,4 @@
+import csv
 import io
 import json
 import re
@@ -94,3 +95,14 @@ def test_messages_are_capped(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = data["checks"][0]
     assert fake["ok"] is False
     assert fake["messages"] == [f"problem {i}" for i in range(MAX_MESSAGES)]
+
+
+def test_zip_keeps_raw_cents() -> None:
+    with zipfile.ZipFile(io.BytesIO(demo_zip(*ARGS))) as z:
+        text = z.read("journal_lines.csv").decode()
+    lines = text.splitlines()
+    head = lines[0].split(",")
+    col = head.index("debit_cents")
+    assert len(lines) > 1
+    for row in csv.reader(lines[1:]):
+        assert re.fullmatch(r"-?[0-9]+", row[col])
