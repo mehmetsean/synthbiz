@@ -189,6 +189,11 @@ def columns(table: str) -> list[str]:
     return [c[0] for c in _TABLES[table]["columns"]]
 
 
+def money_columns(table: str) -> list[str]:
+    cols = _TABLES[table]["columns"]
+    return [n for n, ty, _ in cols if ty == "integer" and n.endswith("_cents")]
+
+
 def schema_dict() -> dict[str, Any]:
     tables: dict[str, Any] = {}
     for name, t in _TABLES.items():

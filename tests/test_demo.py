@@ -1,5 +1,6 @@
 import io
 import json
+import re
 import zipfile
 from pathlib import Path
 
@@ -10,7 +11,7 @@ from synthbiz.check import Result
 from synthbiz.demo import MAX_MESSAGES, demo_zip, run_demo
 from synthbiz.generate import Params, generate
 from synthbiz.io import verify_manifest, write_dataset
-from synthbiz.schema import TABLE_NAMES
+from synthbiz.schema import TABLE_NAMES, money_columns
 
 ARGS = (42, 3, "small", 0.05)
 
@@ -25,6 +26,15 @@ def test_run_demo_shape() -> None:
     rules = [c["rule"] for c in data["checks"]]
     assert rules[-1] == "manifest"
     assert all(c["ok"] for c in data["checks"])
+
+
+def test_money_columns_come_from_schema() -> None:
+    data = json.loads(run_demo(*ARGS))
+    for name, t in data["tables"].items():
+        assert t["money"] == money_columns(name)
+        for col in t["money"]:
+            assert all(re.fullmatch(r"-?\d+", str(r[col])) for r in t["preview"])
+    assert data["tables"]["journal_lines"]["money"] == ["debit_cents", "credit_cents"]
 
 
 def test_preview_rows() -> None:
