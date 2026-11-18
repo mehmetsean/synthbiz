@@ -1,5 +1,7 @@
 """Tie-out checks that run on generated tables."""
 
+from bisect import bisect_left
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import date
 from typing import Any
@@ -26,9 +28,9 @@ class Result:
 def month_ends_from_lines(lines: list[dict[str, Any]]) -> list[date]:
     if not lines:
         return []
-    dates = sorted(str(r["posting_date"]) for r in lines)
-    first = date.fromisoformat(dates[0])
-    last = date.fromisoformat(dates[-1])
+    dates = [str(r["posting_date"]) for r in lines]
+    first = date.fromisoformat(min(dates))
+    last = date.fromisoformat(max(dates))
     out: list[date] = []
     y, m = first.year, first.month
     while (y, m) <= (last.year, last.month):
@@ -45,13 +47,51 @@ def _role_accounts(tables: Tables, role: str) -> set[str]:
     }
 
 
-def _gl_balance(tables: Tables, role: str, me: str, debit_normal: bool) -> int:
-    accounts = _role_accounts(tables, role)
+def _balances(
+    ends: list[str],
+    rows: Iterable[tuple[str, dict[str, Any]]],
+    amount: Callable[[dict[str, Any]], int],
+) -> list[int]:
+    """Running total at each month end, from (date, row) pairs."""
+    if not ends:
+        return []
+    sums = [0] * len(ends)
+    for day, row in rows:
+        i = bisect_left(ends, day)
+        if i < len(ends):
+            sums[i] += amount(row)
     total = 0
-    for r in tables["journal_lines"]:
-        if r["account_id"] in accounts and str(r["posting_date"]) <= me:
-            total += int(r["debit_cents"]) - int(r["credit_cents"])
-    return total if debit_normal else -total
+    for i, value in enumerate(sums):
+        total += value
+        sums[i] = total
+    return sums
+
+
+def _net(row: dict[str, Any]) -> int:
+    return int(row["debit_cents"]) - int(row["credit_cents"])
+
+
+def _cents(row: dict[str, Any]) -> int:
+    return int(row["amount_cents"])
+
+
+def _gl_balances(
+    tables: Tables, ends: list[str], roles: dict[str, bool]
+) -> dict[str, list[int]]:
+    """GL balance at each month end per role. The flag marks debit-normal roles."""
+    if not ends:
+        return {role: [] for role in roles}
+    out: dict[str, list[int]] = {}
+    for role, debit_normal in roles.items():
+        ids = _role_accounts(tables, role)
+        rows = (
+            (str(r["posting_date"]), r)
+            for r in tables["journal_lines"]
+            if r["account_id"] in ids
+        )
+        totals = _balances(ends, rows, _net)
+        out[role] = totals if debit_normal else [-t for t in totals]
+    return out
 
 
 def check_balanced(tables: Tables) -> list[str]:
@@ -66,42 +106,43 @@ def check_balanced(tables: Tables) -> list[str]:
     ]
 
 
-def _open_balance(
+def _open_balances(
     invoices: list[dict[str, Any]],
     settlements: list[dict[str, Any]],
     inv_date: str,
     set_date: str,
-    me: str,
-) -> int:
-    billed = sum(int(r["amount_cents"]) for r in invoices if str(r[inv_date]) <= me)
-    settled = sum(int(r["amount_cents"]) for r in settlements if str(r[set_date]) <= me)
-    return billed - settled
+    ends: list[str],
+) -> list[int]:
+    billed = _balances(ends, ((str(r[inv_date]), r) for r in invoices), _cents)
+    settled = _balances(ends, ((str(r[set_date]), r) for r in settlements), _cents)
+    return [x - y for x, y in zip(billed, settled, strict=True)]
 
 
 def check_subledger_ties(tables: Tables) -> list[str]:
     errors: list[str] = []
-    for me in month_ends_from_lines(tables["journal_lines"]):
-        s = me.isoformat()
-        ap_sub = _open_balance(
-            tables["ap_invoices"],
-            tables["ap_payments"],
-            "invoice_date",
-            "payment_date",
-            s,
-        )
-        ap_gl = _gl_balance(tables, "AP_CONTROL", s, debit_normal=False)
-        if ap_sub != ap_gl:
-            errors.append(f"AP {s}: subledger {ap_sub} vs control {ap_gl} cents")
-        ar_sub = _open_balance(
-            tables["ar_invoices"],
-            tables["ar_receipts"],
-            "invoice_date",
-            "receipt_date",
-            s,
-        )
-        ar_gl = _gl_balance(tables, "AR_CONTROL", s, debit_normal=True)
-        if ar_sub != ar_gl:
-            errors.append(f"AR {s}: subledger {ar_sub} vs control {ar_gl} cents")
+    ends = [me.isoformat() for me in month_ends_from_lines(tables["journal_lines"])]
+    gl = _gl_balances(tables, ends, {"AP_CONTROL": False, "AR_CONTROL": True})
+    ap_sub = _open_balances(
+        tables["ap_invoices"],
+        tables["ap_payments"],
+        "invoice_date",
+        "payment_date",
+        ends,
+    )
+    ar_sub = _open_balances(
+        tables["ar_invoices"],
+        tables["ar_receipts"],
+        "invoice_date",
+        "receipt_date",
+        ends,
+    )
+    for i, s in enumerate(ends):
+        ap_gl = gl["AP_CONTROL"][i]
+        if ap_sub[i] != ap_gl:
+            errors.append(f"AP {s}: subledger {ap_sub[i]} vs control {ap_gl} cents")
+        ar_gl = gl["AR_CONTROL"][i]
+        if ar_sub[i] != ar_gl:
+            errors.append(f"AR {s}: subledger {ar_sub[i]} vs control {ar_gl} cents")
     return errors
 
 
@@ -112,30 +153,33 @@ def reconciling_items(tables: Tables, ends: list[date]) -> list[dict[str, Any]]:
         gl_dates[str(p["payment_id"])] = ("AP_PAYMENT", str(p["payment_date"]))
     for r in tables["ar_receipts"]:
         gl_dates[str(r["receipt_id"])] = ("AR_RECEIPT", str(r["receipt_date"]))
-    out: list[dict[str, Any]] = []
-    for me in ends:
-        s = me.isoformat()
-        for b in tables["bank_transactions"]:
-            ref = gl_dates.get(str(b["ref_id"]))
-            if ref is None or str(b["ref_type"]) != ref[0]:
-                continue
-            if ref[1] <= s < str(b["bank_date"]):
-                amount = int(b["amount_cents"])
-                out.append(
-                    {
-                        "month_end": s,
-                        "item_type": (
-                            "OUTSTANDING_PAYMENT"
-                            if amount < 0
-                            else "DEPOSIT_IN_TRANSIT"
-                        ),
-                        "ref_type": ref[0],
-                        "ref_id": str(b["ref_id"]),
-                        "gl_date": ref[1],
-                        "bank_date": str(b["bank_date"]),
-                        "amount_cents": amount,
-                    }
-                )
+    names = sorted(me.isoformat() for me in ends)
+    if not names:
+        return []
+    per_end: list[list[dict[str, Any]]] = [[] for _ in names]
+    for b in tables["bank_transactions"]:
+        ref = gl_dates.get(str(b["ref_id"]))
+        if ref is None or str(b["ref_type"]) != ref[0]:
+            continue
+        bank_date = str(b["bank_date"])
+        window = range(bisect_left(names, ref[1]), bisect_left(names, bank_date))
+        if not window:
+            continue
+        amount = int(b["amount_cents"])
+        kind = "OUTSTANDING_PAYMENT" if amount < 0 else "DEPOSIT_IN_TRANSIT"
+        for i in window:
+            per_end[i].append(
+                {
+                    "month_end": names[i],
+                    "item_type": kind,
+                    "ref_type": ref[0],
+                    "ref_id": str(b["ref_id"]),
+                    "gl_date": ref[1],
+                    "bank_date": bank_date,
+                    "amount_cents": amount,
+                }
+            )
+    out = [item for group in per_end for item in group]
     out.sort(key=lambda i: (i["month_end"], i["ref_id"]))
     return out
 
@@ -144,19 +188,22 @@ def check_bank_tie(tables: Tables) -> list[str]:
     errors: list[str] = []
     ends = month_ends_from_lines(tables["journal_lines"])
     items = reconciling_items(tables, ends)
-    for me in ends:
-        s = me.isoformat()
-        bank = sum(
-            int(b["amount_cents"])
-            for b in tables["bank_transactions"]
-            if str(b["bank_date"]) <= s
+    names = [me.isoformat() for me in ends]
+    banks = _balances(
+        names, ((str(b["bank_date"]), b) for b in tables["bank_transactions"]), _cents
+    )
+    adjusts: dict[str, int] = {}
+    for i in items:
+        adjusts[i["month_end"]] = adjusts.get(i["month_end"], 0) + int(
+            i["amount_cents"]
         )
-        adjust = sum(int(i["amount_cents"]) for i in items if i["month_end"] == s)
-        gl = _gl_balance(tables, "CASH", s, debit_normal=True)
-        if bank + adjust != gl:
+    cash = _gl_balances(tables, names, {"CASH": True})["CASH"]
+    for k, s in enumerate(names):
+        adjust = adjusts.get(s, 0)
+        if banks[k] + adjust != cash[k]:
             errors.append(
-                f"Bank {s}: bank {bank} + reconciling items {adjust} "
-                f"vs GL cash {gl} cents"
+                f"Bank {s}: bank {banks[k]} + reconciling items {adjust} "
+                f"vs GL cash {cash[k]} cents"
             )
     listed = tables.get("reconciling_items")
     if listed is not None:
@@ -171,11 +218,18 @@ def check_bank_tie(tables: Tables) -> list[str]:
 def check_links(tables: Tables, labels: Labels | None = None) -> list[str]:
     errors: list[str] = []
     schema = schema_dict()["tables"]
+    cache: dict[tuple[str, str], set[str]] = {}
+
+    def values(table: str, col: str) -> set[str]:
+        if (table, col) not in cache:
+            cache[(table, col)] = {str(r[col]) for r in tables[table]}
+        return cache[(table, col)]
+
     for name in TABLE_NAMES:
         key = schema[name]["primary_key"][0]
         for col, target in schema[name]["foreign_keys"].items():
             other, other_col = target.split(".")
-            have = {str(r[other_col]) for r in tables[other]}
+            have = values(other, other_col)
             for r in tables[name]:
                 if str(r[col]) not in have:
                     errors.append(
@@ -196,7 +250,7 @@ def check_links(tables: Tables, labels: Labels | None = None) -> list[str]:
             errors.append(f"labels: unknown table {_safe(table)}")
             continue
         key = schema[table]["primary_key"][0]
-        if str(lab["row_id"]) not in {str(r[key]) for r in tables[table]}:
+        if str(lab["row_id"]) not in values(table, key):
             errors.append(f"labels: {table} {_safe(lab['row_id'])} not found")
     return errors
 
