@@ -177,6 +177,13 @@ def verify_manifest(folder: Path) -> list[str] | None:
     return errors
 
 
+MAX_ROWS_PER_FILE = 3_000_000
+
+
+def _too_many_rows(name: str) -> ValueError:
+    return ValueError(f"{name}: more than {MAX_ROWS_PER_FILE} rows")
+
+
 def _bad_columns(name: str, expected: list[str], found: str) -> ValueError:
     return ValueError(
         f"{name}: columns do not match the schema, "
@@ -187,7 +194,8 @@ def _bad_columns(name: str, expected: list[str], found: str) -> ValueError:
 def _check_value(name: str, where: str, column: str, kind: str, value: str) -> None:
     try:
         if kind == "integer":
-            int(value)
+            if not re.fullmatch(r"-?[0-9]{1,18}", value):
+                raise ValueError(value)
         elif kind == "date":
             if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", value):
                 raise ValueError(value)
@@ -206,6 +214,8 @@ def _read_csv(
             reader = csv.reader(f, strict=True)
             for row in reader:
                 records.append((reader.line_num, row))
+                if len(records) > MAX_ROWS_PER_FILE + 1:
+                    raise _too_many_rows(name)
     except UnicodeDecodeError:
         raise ValueError(f"{name}: not valid UTF-8") from None
     except csv.Error as e:
@@ -245,7 +255,14 @@ def _read_parquet(
             "install synthbiz[parquet]"
         ) from None
     try:
-        table = pq.read_table(path)
+        pf = pq.ParquetFile(path)
+        count = int(pf.metadata.num_rows)
+    except Exception:
+        raise ValueError(f"{path.name}: not a readable Parquet file") from None
+    if count > MAX_ROWS_PER_FILE:
+        raise _too_many_rows(path.name)
+    try:
+        table = pf.read()
     except Exception:
         raise ValueError(f"{path.name}: not a readable Parquet file") from None
     if table.column_names != expected:
