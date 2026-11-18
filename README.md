@@ -132,8 +132,11 @@ A label points to one row by table name and row id. The diagram draws one of the
 - links: every key in the schema points to a real row, and every label points to
   a real row.
 - dates: due dates, payments and receipts are not before their invoice, and each
-  journal line's period matches its posting month unless it is a labeled
-  out_of_period_entry.
+  journal line's period matches its posting month. Two cases are allowed: a
+  labeled out_of_period_entry, and a line posted in the close window (on or
+  before the 3rd business day of its month) whose period is the previous month.
+  A planted out_of_period_entry is never posted inside the close window, so the
+  two cases do not overlap.
 - manifest: every file still has the sha256 recorded in manifest.json.
 
 A folder without labels.csv and manifest.json is read, and `check` prints a SKIP line for each missing file. The last line says how many checks were skipped, for example "All checks passed, 2 skipped". Skips do not change the exit code. If only labels.csv is removed, the manifest check fails, because manifest.json lists labels.csv.
@@ -160,6 +163,23 @@ To build the same two badge files on your machine, run these after `pip install 
     pytest --junitxml=badge-check/junit.xml --cov-report=json:badge-check/coverage.json
     python scripts/make_badges.py badge-check/coverage.json badge-check/junit.xml badge-check/badges
 
+## Background rows
+
+By default the ledger also holds legitimate activity that looks a little like an anomaly but is not one. These rows are not in labels.csv. manifest.json lists how many of each kind exist under `background_counts`, and writes the approval limit as `approval_limit_cents`.
+
+- system_batch_weekend: a system entry on a weekend each month and on each US federal holiday, with no approver.
+- system_recurring: two system entries a month on business days, with no approver.
+- close_window_accrual: manual accruals in the first 3 business days of a month, booked to the previous period.
+- human_weekend_close: one manual accrual on a weekend at each quarter end.
+- round_rent_accrual: the same round amount every month.
+- round_retainer_invoice: one vendor, the same round amount, invoice number RET-YYYYMM.
+- recurring_fixed_invoice: one vendor, the same amount every week, invoice numbers that differ by one digit (FR-00123, FR-00124).
+- occasional_poster: a rare poster, the CFO each quarter end and a tax accountant once a year.
+
+Why: a rule that flags weekends, missing approvers, round amounts or similar invoice numbers should flag these rows too. On a dataset with only planted anomalies every such rule would score a perfect precision, which says nothing. With these rows the false alarm rate of a rule shows up in the numbers. Rows that the rule flags and the labels do not list count as false alarms.
+
+The background step runs after the planted anomalies, so every other row, id and value is the same with background on or off. Turn it off with `synthbiz generate --no-background`. manifest.json then records `"background": false` and every count is 0.
+
 ## Performance
 
 `check` buckets rows by month end with a binary search, so it reads each row once instead of once per month end. At 36 months, check is faster than before in the results table in docs/benchmark.md. `generate` calls the same `reconciling_items` code, and its output files are unchanged: `tests/test_examples.py` generates the same sample into a temporary folder and compares every file byte for byte with examples/seed42-3m. `benchmarks/bench.py` times `check` against the old code and a simple unlinked generator, and fails if the results differ. See docs/benchmark.md for the commands and a results table.
@@ -172,7 +192,9 @@ To build the same two badge files on your machine, run these after `pip install 
 - No multi-currency, payroll or tax.
 - Amounts, timing and rates are not real-world statistics.
 - Anomaly types are planted in a fixed rotation, so a low rate or a short run will
-  not include all nine types. The example below has six.
+  not include all ten types. The example below has six.
+- Background rows are generated for the same fictional company only. They are one
+  fixed set of patterns, not a model of real posting behavior.
 
 ## Numbers in this README
 
@@ -186,27 +208,38 @@ Example: seed 42, 12 months, size small, anomaly rate 0.02.
 Rows per table:
 
 - chart_of_accounts: 11
-- journal_lines: 1030
+- journal_lines: 1440
 - vendors: 9
-- ap_invoices: 149
-- ap_payments: 126
+- ap_invoices: 217
+- ap_payments: 185
 - customers: 6
 - ar_invoices: 120
 - ar_receipts: 92
-- bank_transactions: 219
-- reconciling_items: 18
+- bank_transactions: 278
+- reconciling_items: 21
 - labels: 6
 
-Total rows: 1780 (not counting labels)
+Total rows: 2379 (not counting labels)
 
 Planted anomalies: 6
 
 - exact_duplicate_payment: 1
-- holiday_posting: 1
 - near_duplicate_payment: 1
 - round_amount_entry: 1
 - split_invoice: 1
+- typo_duplicate_payment: 1
 - weekend_posting: 1
+
+Background rows (legitimate, not labeled):
+
+- close_window_accrual: 11
+- human_weekend_close: 4
+- occasional_poster: 5
+- recurring_fixed_invoice: 53
+- round_rent_accrual: 12
+- round_retainer_invoice: 12
+- system_batch_weekend: 23
+- system_recurring: 24
 
 Checks:
 
@@ -217,7 +250,7 @@ Checks:
 - dates: PASS
 - manifest: PASS
 
-manifest.json sha256: ed5ae6357ffff8da4e56ee8484d5409e2feed0e074895a0ffc3d085d54c8c1e5
+manifest.json sha256: 6b1a67596044b60b315017199a39ec3793e3380dcd7056317956209ac60fcd1d
 <!-- numbers:end -->
 
 See docs/spec.md for scope, DATA.md for data sources and docs/adr/ for design decisions.
