@@ -158,7 +158,7 @@ Run these from the repo folder.
 ## Limits
 
 - v0.1 is finance only: one fictional company, ten tables.
-- Dates must be written YYYY-MM-DD. check refuses a journal that spans more than 1200 months and a bank and GL set that would list more than 1,000,000 reconciling items. generate refuses more than 1200 months.
+- Dates must be written YYYY-MM-DD. check refuses a journal that spans more than 1200 months, and it stops when the reconciling items would pass 200,000. generate refuses more than 1200 months.
 - Holidays are US federal holidays only.
 - No multi-currency, payroll or tax.
 - Amounts, timing and rates are not real-world statistics.
