@@ -6,7 +6,7 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ### Added
 
-- Background rows: legitimate unlabeled activity of eight kinds (weekend and holiday system batches, recurring system entries, close window accruals, a quarter end weekend close, a round rent accrual, a round retainer invoice, weekly fixed freight invoices and rare posters). On by default, `--no-background` and `Params(background=False)` turn it off. See ADR 16.
+- Background rows: legitimate unlabeled activity of eight kinds (weekend and holiday system batches, recurring system entries, close window accruals, a quarter end weekend close, a round rent accrual, a round retainer invoice, weekly fixed freight invoices and rare posters). On by default, `--no-background` and `Params(background=False)` turn it off. See docs/adr/0016-unlabeled-background-rows.md.
 - New labeled anomaly type typo_duplicate_payment, after near_duplicate_payment in the rotation. There are ten types now.
 - manifest.json has `parameters.background`, `background_counts` and `approval_limit_cents`.
 - `Dataset.background` and `Builder.mark_background`.
@@ -22,11 +22,10 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 - The dates rule allows a previous-period line posted on or before the 3rd business day of its month (the close window). ADR 15.
 - out_of_period_entry is never planted inside the close window.
-- Default output changes with background on and with the new type in the rotation: the example in examples/seed42-3m, the README numbers and the golden checksums are regenerated. With `--no-background` the journal and bank files keep their 0.1.2 bytes only while the rotation stays within the first two anomaly types (at most two planted anomalies). Seed 42 with 3 months and the default rate is pinned by golden checksums for the journal and bank files in tests/test_io.py.
+- Default output changes because background rows are on and the new type is in the rotation. The example in examples/seed42-3m, the README numbers and the golden checksums are regenerated. With `--no-background`, the journal and bank files match 0.1.2 byte for byte only when at most two anomalies are planted. tests/test_io.py checks golden checksums for seed 42 with 3 months, with and without background.
 - Demo previews show money columns as US dollars, for example $12,345.67, right-aligned. The zip download keeps raw cents.
-- The demo sends the list of money columns with each table preview. The list comes from the schema.
-- Demo preview tables show a hint when a table is wider than its box. Long text cells wrap. Cells over 60 characters, such as anomaly details, sit behind a keyboard-accessible toggle.
-- The demo page has one source link, in the header.
+- Demo preview tables show a hint when a table is wider than its box. Long text cells wrap. Cells longer than 60 characters, such as anomaly details, are hidden behind a toggle that works with the keyboard (tests/test_browser.py).
+- The demo page links to the source code once, in the header.
 
 ## 0.1.2 - 2026-11-17
 
