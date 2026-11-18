@@ -2,7 +2,7 @@
 
 All notable changes are listed here. The format follows Keep a Changelog.
 
-## Unreleased
+## 0.1.2 - 2026-11-17
 
 ### Changed
 
