@@ -55,15 +55,25 @@ def test_csp_meta_tag() -> None:
         assert part in html
 
 
+SVG_NS = "http://www.w3.org/2000/svg"
+
+
 def test_no_other_external_origins() -> None:
     for name in ["index.html", "app.js", "style.css"]:
-        text = (SITE / name).read_text(encoding="utf-8")
+        text = (SITE / name).read_text(encoding="utf-8").replace(SVG_NS, "")
         origins = set(re.findall(r"https?://[^/\s\"'<>);]+", text))
         assert origins <= {
             "https://cdn.jsdelivr.net",
             "https://github.com",
             "https://www.linkedin.com",
         }, f"{name}: {origins}"
+
+
+def test_svg_namespace_only_in_app_js() -> None:
+    js = (SITE / "app.js").read_text(encoding="utf-8")
+    assert js.count(SVG_NS) == 1
+    for name in ["index.html", "style.css"]:
+        assert SVG_NS not in (SITE / name).read_text(encoding="utf-8")
 
 
 def test_no_inline_handlers_or_innerhtml() -> None:
@@ -88,3 +98,44 @@ def test_pages_workflow_is_pinned_and_gated() -> None:
     for line in text.splitlines():
         if "uses:" in line:
             assert re.search(r"@[0-9a-f]{40} # v\d", line), line
+
+
+def test_no_inline_style_attributes() -> None:
+    assert not re.search(r"\sstyle=", _html())
+    js = (SITE / "app.js").read_text(encoding="utf-8")
+    assert 'setAttribute("style"' not in js
+    assert ".style." not in js
+
+
+FOOTER_SENTENCES = [  # noqa: E501
+    "This page loads Pyodide (MPL-2.0) and micropip (MPL-2.0) from cdn.jsdelivr.net at runtime. They are not bundled in this repo.",  # noqa: E501
+    "Synthetic data for testing and learning only. Any match with a real business is unintended. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance.",  # noqa: E501
+    "Copyright (c) 2026 Mehmet Tuzunkan. All rights reserved. You may view the code and run it to evaluate it. Commercial use needs a paid license from Mehmet Tuzunkan: https://www.linkedin.com/in/mstuzunkan",  # noqa: E501
+    "Source code on GitHub",
+]
+
+
+def test_footer_sentences_present() -> None:
+    footer = _html().split("<footer>")[1].split("</footer>")[0]
+    for sentence in FOOTER_SENTENCES:
+        assert sentence in footer
+
+
+def test_privacy_note_present() -> None:
+    assert "All data stays in your browser." in _html()
+    assert "You can check this in the browser's Network tab." in _html()
+
+
+def test_css_has_tokens_and_dark_theme() -> None:
+    css = (SITE / "style.css").read_text(encoding="utf-8")
+    assert "prefers-color-scheme: dark" in css
+    assert "prefers-reduced-motion" in css
+    assert ":focus-visible" in css
+    assert "--color-bg" in css and "--space-3" in css and "--radius" in css
+
+
+def test_chart_is_accessible_svg() -> None:
+    js = (SITE / "app.js").read_text(encoding="utf-8")
+    assert "createElementNS" in js
+    assert '"role", "img"' in js
+    assert '"title"' in js and '"desc"' in js

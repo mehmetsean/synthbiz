@@ -7,6 +7,13 @@ All notable changes are listed here. The format follows Keep a Changelog.
 ### Changed
 
 - LICENSE now says that commercial use needs a paid license and how to buy one.
+- Demo page redesign: design tokens, light and dark themes, a responsive form and a header with the source link.
+
+### Added
+
+- Demo summary row with total rows, tables, planted anomalies and checks passed.
+- Demo bar chart of planted anomalies by type, with the same numbers in a text table.
+- Demo check results show [PASS] and [FAIL] marks, so they do not rely on color alone.
 
 ## 0.1.1 - 2026-11-17
 
