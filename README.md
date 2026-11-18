@@ -178,7 +178,7 @@ By default the ledger also holds legitimate activity that looks a little like an
 
 Why: a rule that flags weekends, missing approvers, round amounts or similar invoice numbers should flag these rows too. On a dataset with only planted anomalies, a rule that flags weekends would score a precision of 1.0, which says nothing about the rule. With these rows the false alarm rate of a rule shows up in the numbers. Rows that the rule flags and the labels do not list count as false alarms.
 
-The background step runs after the planted anomalies, so every base and anomaly row, with its id and values, is the same with background on or off. Only bank_txn_id (renumbered after sorting) and reconciling_items (rebuilt) differ. Turn it off with `synthbiz generate --no-background`. manifest.json then sets `parameters.background` to false and every count in `background_counts` is 0. The output matches 0.1.2 byte for byte only while the rotation stays within the first two anomaly types (at most two planted anomalies).
+The background step runs after the planted anomalies, so every base and anomaly row, with its id and values, is the same with background on or off. Only bank_txn_id (renumbered after sorting) and reconciling_items (rebuilt) differ. Turn it off with `synthbiz generate --no-background`. manifest.json then sets `parameters.background` to false and every count in `background_counts` is 0. The journal and bank files match 0.1.2 byte for byte only while the rotation stays within the first two anomaly types (at most two planted anomalies). manifest.json and README.txt always differ from 0.1.2, because they hold the new fields and notes.
 
 ## Performance
 
