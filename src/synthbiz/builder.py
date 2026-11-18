@@ -51,6 +51,7 @@ class Builder:
         self.end = end
         self.tables: dict[str, list[Row]] = {}
         self.labels: list[dict[str, str]] = []
+        self.background: list[dict[str, str]] = []
         self._counters: dict[str, int] = {}
         self.base_vendors = 0
 
@@ -66,6 +67,9 @@ class Builder:
         self.labels.append(
             {"table": table, "row_id": row_id, "anomaly_type": kind, "details": details}
         )
+
+    def mark_background(self, table: str, row_id: str, kind: str) -> None:
+        self.background.append({"table": table, "row_id": row_id, "kind": kind})
 
     def post(
         self,

@@ -18,6 +18,7 @@ def _generate(args: argparse.Namespace) -> int:
         size=args.size,
         anomaly_rate=args.anomaly_rate,
         start_date=args.start_date,
+        background=args.background,
     )
     try:
         ds = generate(params)
@@ -82,6 +83,12 @@ def main(argv: list[str] | None = None) -> int:
     g.add_argument("--size", choices=sorted(SIZES), default="small")
     g.add_argument("--anomaly-rate", type=float, default=0.02)
     g.add_argument("--start-date", type=date.fromisoformat, default=date(2025, 1, 1))
+    g.add_argument(
+        "--no-background",
+        dest="background",
+        action="store_false",
+        help="leave out the legitimate unlabeled background rows",
+    )
     g.add_argument("--format", choices=FORMATS, default="csv")
     g.add_argument("--out", required=True)
     g.add_argument(
