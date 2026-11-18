@@ -13,6 +13,9 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ### Added
 
+- scripts/make_badges.py writes coverage.svg and tests.svg from pytest output, using only the standard library. The Pages build runs the tests and publishes both files under badges/. The README shows them. No outside badge service is used.
+- Tests for the badge script, including contrast ratios and a property test that random coverage values from 0 to 100 and test counts give a valid SVG.
+- The Pages build also runs on pull requests, without deploying.
 - A browser test of the Generate button, and a CI job that runs it in Chromium. It is not part of the required ci check.
 - synthbiz.schema.money_columns(table) returns the money columns of a table.
 - A new optional extra, browser, installs Playwright for that test. Runtime dependencies are still empty.
