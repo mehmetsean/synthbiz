@@ -6,11 +6,14 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ### Changed
 
+- check and generate no longer rescan every row for each month end. Balances are bucketed by month end in one pass. Output files are unchanged.
 - LICENSE now says that commercial use needs a paid license and how to buy one.
 - Demo page redesign: design tokens, light and dark themes, a responsive form and a header with the source link.
 
 ### Added
 
+- benchmarks/bench.py and docs/benchmark.md: timings against the old check code and a simple unlinked generator, with a correctness assertion that CI runs.
+- Equivalence tests that compare the checks with the old reference code on random and tampered data.
 - Demo summary row with total rows, tables, planted anomalies and checks passed.
 - Demo bar chart of planted anomalies by type, with the same numbers in a text table.
 - Demo check results show [PASS] and [FAIL] marks, so they do not rely on color alone.

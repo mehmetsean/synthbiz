@@ -151,6 +151,10 @@ Run these from the repo folder.
 - `synthbiz check examples/seed42-3m` runs the checks on the committed sample. See `examples/README.md`.
 - To check the manifest hash by hand, run the quickstart generate command (seed 42, 12 months, size small, rate 0.02), then `shasum -a 256 data/manifest.json`. It must equal the sha256 at the end of the numbers block. The 3 month sample in examples/ is a different run, so its hash is different.
 
+## Performance
+
+`check` and `generate` bucket rows by month end with a binary search, so they read each row once instead of once per month end. `benchmarks/bench.py` times them against the old code and a simple unlinked generator, and fails if the results differ. See docs/benchmark.md for the commands and a results table.
+
 ## Limits
 
 - v0.1 is finance only: one fictional company, ten tables.
