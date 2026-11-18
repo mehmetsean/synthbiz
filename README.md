@@ -158,7 +158,7 @@ Run these from the repo folder.
 ## Limits
 
 - v0.1 is finance only: one fictional company, ten tables.
-- Dates must be written YYYY-MM-DD. check refuses a journal that spans more than 1200 months, and it stops when the reconciling items would pass 200,000. Integer columns accept only plain digits with an optional minus sign, up to 18 digits. A table file with more than 3,000,000 rows is refused before the rest is read. generate refuses more than 1200 months.
+- Dates must be written YYYY-MM-DD. check refuses a journal that spans more than 1200 months, and it stops when the reconciling items would pass 200,000. Integer columns accept only plain digits with an optional minus sign, up to 18 digits. A Parquet file with more than 3,000,000 rows is refused from its metadata. A CSV file is stopped once it passes 3,000,000 rows. A folder may hold at most 5,000,000 rows in total.
 - Holidays are US federal holidays only.
 - No multi-currency, payroll or tax.
 - Amounts, timing and rates are not real-world statistics.
