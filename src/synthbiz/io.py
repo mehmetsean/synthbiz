@@ -178,10 +178,23 @@ def verify_manifest(folder: Path) -> list[str] | None:
 
 
 MAX_ROWS_PER_FILE = 3_000_000
+MAX_TOTAL_ROWS = 5_000_000
 
 
 def _too_many_rows(name: str) -> ValueError:
     return ValueError(f"{name}: more than {MAX_ROWS_PER_FILE} rows")
+
+
+class _Budget:
+    """Running row total over every file in a folder."""
+
+    def __init__(self) -> None:
+        self.total = 0
+
+    def add(self, name: str, count: int) -> None:
+        self.total += count
+        if self.total > MAX_TOTAL_ROWS:
+            raise ValueError(f"{name}: folder has more than {MAX_TOTAL_ROWS} rows")
 
 
 def _bad_columns(name: str, expected: list[str], found: str) -> ValueError:
@@ -205,17 +218,31 @@ def _check_value(name: str, where: str, column: str, kind: str, value: str) -> N
 
 
 def _read_csv(
-    path: Path, expected: list[str], types: dict[str, str] | None = None
+    path: Path,
+    expected: list[str],
+    types: dict[str, str] | None = None,
+    budget: _Budget | None = None,
 ) -> list[dict[str, Any]]:
     name = path.name
+    budget = budget or _Budget()
+    filled = 0
+    blanks = 0
     records: list[tuple[int, list[str]]] = []
     try:
         with path.open(newline="", encoding="utf-8-sig") as f:
             reader = csv.reader(f, strict=True)
             for row in reader:
                 records.append((reader.line_num, row))
-                if len(records) > MAX_ROWS_PER_FILE + 1:
-                    raise _too_many_rows(name)
+                if not row:
+                    blanks += 1
+                    if blanks > MAX_ROWS_PER_FILE:
+                        raise _too_many_rows(name)
+                    continue
+                filled += 1
+                if filled > 1:
+                    if filled > MAX_ROWS_PER_FILE + 1:
+                        raise _too_many_rows(name)
+                    budget.add(name, 1)
     except UnicodeDecodeError:
         raise ValueError(f"{name}: not valid UTF-8") from None
     except csv.Error as e:
@@ -245,8 +272,12 @@ def _read_csv(
 
 
 def _read_parquet(
-    path: Path, expected: list[str], types: dict[str, str]
+    path: Path,
+    expected: list[str],
+    types: dict[str, str],
+    budget: _Budget | None = None,
 ) -> list[dict[str, Any]]:
+    budget = budget or _Budget()
     try:
         import pyarrow.parquet as pq
     except ImportError:
@@ -256,15 +287,23 @@ def _read_parquet(
         ) from None
     try:
         pf = pq.ParquetFile(path)
-        count = int(pf.metadata.num_rows)
+        meta = pf.metadata
+        groups = sum(
+            int(meta.row_group(i).num_rows) for i in range(meta.num_row_groups)
+        )
+        count = max(int(meta.num_rows), groups)
     except Exception:
         raise ValueError(f"{path.name}: not a readable Parquet file") from None
     if count > MAX_ROWS_PER_FILE:
         raise _too_many_rows(path.name)
+    budget.add(path.name, count)
     try:
         table = pf.read()
     except Exception:
         raise ValueError(f"{path.name}: not a readable Parquet file") from None
+    if table.num_rows > MAX_ROWS_PER_FILE:
+        raise _too_many_rows(path.name)
+    budget.add(path.name, max(0, table.num_rows - count))
     if table.column_names != expected:
         raise _bad_columns(path.name, expected, repr(",".join(table.column_names)))
     out: list[dict[str, Any]] = []
@@ -290,17 +329,20 @@ def read_dataset(
     if not folder.is_dir():
         raise FileNotFoundError(f"folder not found: {folder}")
     tables: dict[str, list[dict[str, Any]]] = {}
+    budget = _Budget()
     for name in TABLE_NAMES:
         csv_path = folder / f"{name}.csv"
         pq_path = folder / f"{name}.parquet"
         if csv_path.exists() and pq_path.exists():
             raise ValueError(f"both {name}.csv and {name}.parquet are in {folder}")
         if csv_path.exists():
-            tables[name] = _read_csv(csv_path, columns(name), _types(name))
+            tables[name] = _read_csv(csv_path, columns(name), _types(name), budget)
         elif pq_path.exists():
-            tables[name] = _read_parquet(pq_path, columns(name), _types(name))
+            tables[name] = _read_parquet(pq_path, columns(name), _types(name), budget)
         else:
             raise FileNotFoundError(f"missing table file for {name} in {folder}")
     labels_path = folder / "labels.csv"
-    labels = _read_csv(labels_path, LABEL_COLUMNS) if labels_path.exists() else []
+    labels: list[dict[str, Any]] = []
+    if labels_path.exists():
+        labels = _read_csv(labels_path, LABEL_COLUMNS, None, budget)
     return tables, labels

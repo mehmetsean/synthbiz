@@ -6,7 +6,15 @@ import pytest
 import synthbiz.io
 from synthbiz.cli import main
 from synthbiz.generate import Params, generate
-from synthbiz.io import MAX_ROWS_PER_FILE, read_dataset, write_dataset
+from synthbiz.io import (
+    MAX_ROWS_PER_FILE,
+    MAX_TOTAL_ROWS,
+    _read_csv,
+    _read_parquet,
+    read_dataset,
+    write_dataset,
+)
+from synthbiz.schema import columns
 
 BAD_INTS = [" 5", "5 ", "1_000", "+5", "٥", "1" * 19, "1.5", ""]
 GOOD_INTS = ["-123", "0", "9" * 18]
@@ -142,5 +150,101 @@ def test_cli_bad_integer(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> 
 
 
 def test_cap_is_above_the_measured_largest_table() -> None:
-    # 1426918 journal_lines: size large, 1200 months, rate 0.5, seed 42 (ADR 0013)
+    # ADR 0013
     assert MAX_ROWS_PER_FILE >= 2 * 1_426_918
+
+
+COA_ROWS = 11
+COA_TYPES = {c: "string" for c in columns("chart_of_accounts")}
+
+
+def _coa(tmp_path: Path, fmt: str) -> Path:
+    _folder(tmp_path, fmt)
+    return tmp_path / f"chart_of_accounts.{fmt}"
+
+
+def _read_one(path: Path) -> list[dict[str, Any]]:
+    cols = columns("chart_of_accounts")
+    if path.suffix == ".csv":
+        return _read_csv(path, cols, COA_TYPES)
+    return _read_parquet(path, cols, COA_TYPES)
+
+
+@pytest.mark.parametrize("fmt", ["csv", "parquet"])
+def test_exactly_the_cap_is_read_and_one_more_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fmt: str
+) -> None:
+    if fmt == "parquet":
+        pytest.importorskip("pyarrow")
+    path = _coa(tmp_path, fmt)
+    monkeypatch.setattr(synthbiz.io, "MAX_ROWS_PER_FILE", COA_ROWS)
+    assert len(_read_one(path)) == COA_ROWS
+    monkeypatch.setattr(synthbiz.io, "MAX_ROWS_PER_FILE", COA_ROWS - 1)
+    with pytest.raises(ValueError, match=f"more than {COA_ROWS - 1} rows"):
+        _read_one(path)
+
+
+def test_csv_trailing_blank_lines_do_not_count(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = _coa(tmp_path, "csv")
+    with path.open("a") as f:
+        f.write("\n\n")
+    monkeypatch.setattr(synthbiz.io, "MAX_ROWS_PER_FILE", COA_ROWS)
+    assert len(_read_one(path)) == COA_ROWS
+
+
+def _folder_rows(folder: Path) -> int:
+    tables, labels = read_dataset(folder)
+    return sum(len(t) for t in tables.values()) + len(labels)
+
+
+@pytest.mark.parametrize("fmt", ["csv", "parquet"])
+def test_total_cap_over_all_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fmt: str
+) -> None:
+    if fmt == "parquet":
+        pytest.importorskip("pyarrow")
+    _folder(tmp_path, fmt)
+    total = _folder_rows(tmp_path)
+    monkeypatch.setattr(synthbiz.io, "MAX_TOTAL_ROWS", total)
+    assert _folder_rows(tmp_path) == total
+    monkeypatch.setattr(synthbiz.io, "MAX_TOTAL_ROWS", total - 1)
+    with pytest.raises(ValueError, match=f"folder has more than {total - 1} rows"):
+        read_dataset(tmp_path)
+
+
+def test_total_cap_is_above_the_measured_total() -> None:
+    # ADR 0013
+    assert MAX_TOTAL_ROWS > 1.9 * 2_503_407
+
+
+def test_parquet_row_groups_are_summed_before_reading(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    pq = pytest.importorskip("pyarrow.parquet")
+    path = _coa(tmp_path, "parquet")
+    pq.write_table(pq.read_table(path), path, row_group_size=2)
+    real = pq.ParquetFile(path)
+    assert real.metadata.num_row_groups > 1
+
+    class Meta:
+        num_rows = 0
+        num_row_groups = real.metadata.num_row_groups
+
+        def row_group(self, i: int) -> Any:
+            return real.metadata.row_group(i)
+
+    class Stub:
+        metadata = Meta()
+
+        def __init__(self, _path: Path) -> None:
+            pass
+
+        def read(self) -> None:
+            raise AssertionError("data was read")
+
+    monkeypatch.setattr(pq, "ParquetFile", Stub)
+    monkeypatch.setattr(synthbiz.io, "MAX_ROWS_PER_FILE", COA_ROWS - 1)
+    with pytest.raises(ValueError, match="more than 10 rows"):
+        _read_one(path)
