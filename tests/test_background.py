@@ -76,7 +76,7 @@ def _journal_key(r: dict[str, Any]) -> tuple[Any, ...]:
 
 @pytest.mark.parametrize("seed", [1, 2, 42])
 def test_background_off_rows_are_a_subset_except_renumbered_ids(seed: int) -> None:
-    # bank_txn_id is renumbered after the sort, so bank rows are compared without it
+    # renumbered ids
     on = make(seed=seed, anomaly_rate=0.1)
     off = make(background=False, seed=seed, anomaly_rate=0.1)
     assert on.labels == off.labels
