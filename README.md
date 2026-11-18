@@ -2,10 +2,9 @@
 
 [![coverage](https://mehmetsean.github.io/synthbiz/badges/coverage.svg)](https://github.com/mehmetsean/synthbiz/actions/workflows/pages.yml) [![tests](https://mehmetsean.github.io/synthbiz/badges/tests.svg)](https://github.com/mehmetsean/synthbiz/actions/workflows/pages.yml)
 
-The badges show the numbers from the last successful Pages build of main, so they can lag behind the latest commit. To rebuild them yourself, run these after `pip install -e ".[dev]"`:
+Seeded synthetic finance data for one fictional small manufacturer. The tables link to each other and reconcile, and known problems are planted and labeled.
 
-        pytest --junitxml=badge-check/junit.xml --cov-report=json:badge-check/coverage.json
-        python scripts/make_badges.py badge-check/coverage.json badge-check/junit.xml badge-check/badges
+The badges show the numbers from the last successful Pages build of main, so they can lag behind the latest commit. "Check the results yourself" below shows how to build them on your machine.
 
 ## Who it is for
 
@@ -155,6 +154,11 @@ Run these from the repo folder.
 - `reproduce_readme.py --check` rebuilds every number in the block below and fails if the README is out of date.
 - `synthbiz check examples/seed42-3m` runs the checks on the committed sample. See `examples/README.md`.
 - To check the manifest hash by hand, run the quickstart generate command (seed 42, 12 months, size small, rate 0.02), then `shasum -a 256 data/manifest.json`. It must equal the sha256 at the end of the numbers block. The 3 month sample in examples/ is a different run, so its hash is different.
+
+To build the same two badge files on your machine, run these after `pip install -e ".[dev]"`. The numbers can differ from the Pages build if your Python or packages differ. The SVG files go to badge-check/badges.
+
+    pytest --junitxml=badge-check/junit.xml --cov-report=json:badge-check/coverage.json
+    python scripts/make_badges.py badge-check/coverage.json badge-check/junit.xml badge-check/badges
 
 ## Performance
 
