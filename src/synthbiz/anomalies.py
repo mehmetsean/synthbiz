@@ -1,5 +1,6 @@
 """Inject labeled anomalies. Every anomaly still posts to the ledger correctly."""
 
+import random
 from datetime import date, timedelta
 
 from .builder import APPROVAL_LIMIT_CENTS, Builder, Row, nonround
@@ -7,13 +8,16 @@ from .dates import (
     add_business_days,
     business_days,
     holidays,
+    in_close_window,
     is_business_day,
+    previous_period,
 )
 from .names import name_variant
 
 ANOMALY_TYPES = [
     "exact_duplicate_payment",
     "near_duplicate_payment",
+    "typo_duplicate_payment",
     "split_invoice",
     "round_amount_entry",
     "weekend_posting",
@@ -98,6 +102,36 @@ def _near_duplicate(b: Builder, work: list[date]) -> None:
     )
 
 
+def _typo(number: str, rng: random.Random) -> str:
+    options: set[str] = set()
+    for i in range(len(number)):
+        options.add(number[:i] + number[i + 1 :])
+        options.add(number[: i + 1] + number[i:])
+        if i + 1 < len(number) and number[i] != number[i + 1]:
+            options.add(number[:i] + number[i + 1] + number[i] + number[i + 2 :])
+    options.discard(number)
+    options.discard("")
+    return rng.choice(sorted(options))
+
+
+def _typo_duplicate(b: Builder, work: list[date]) -> None:
+    inv, pay = _paid_invoice(b, work)
+    vendor = next(v for v in b.tables["vendors"] if v["vendor_id"] == inv["vendor_id"])
+    number = _typo(inv["invoice_number"], b.rng)
+    twin = b.ap_invoice(
+        date.fromisoformat(inv["invoice_date"]), vendor, inv["amount_cents"], number
+    )
+    dup = b.ap_payment(twin, _later(b, date.fromisoformat(pay["payment_date"]), work))
+    b.label(
+        "ap_payments",
+        dup["payment_id"],
+        "typo_duplicate_payment",
+        f"Invoice {inv['invoice_number']} entered again as {number} under "
+        f"{vendor['vendor_id']} with the same amount; first paid as "
+        f"{pay['payment_id']}",
+    )
+
+
 def _split_invoice(b: Builder, work: list[date]) -> None:
     rng = b.rng
     vendor = rng.choice(b.tables["vendors"][: b.base_vendors])
@@ -144,9 +178,8 @@ def _journal_anomaly(
         approved_by = None
         note = "Manual accrual with no approver"
     else:
-        month = d.month - 1 or 12
-        year = d.year if d.month > 1 else d.year - 1
-        period = f"{year}-{month:02d}"
+        d = rng.choice([x for x in work if not in_close_window(x)] or work)
+        period = previous_period(d)
         note = f"Manual accrual posted {d.isoformat()} to period {period}"
     je_id, line_id = b.manual_entry(
         d,
@@ -175,6 +208,8 @@ def inject(b: Builder, count: int) -> None:
             _exact_duplicate(b, work)
         elif kind == "near_duplicate_payment":
             _near_duplicate(b, work)
+        elif kind == "typo_duplicate_payment":
+            _typo_duplicate(b, work)
         elif kind == "split_invoice":
             _split_invoice(b, work)
         else:

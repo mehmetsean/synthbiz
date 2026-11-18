@@ -1,10 +1,11 @@
 """Generate one linked set of finance tables."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 
 from . import builder as bld
 from .anomalies import inject
+from .background import add_background
 from .builder import Builder, Row, nonround
 from .check import MAX_MONTHS, month_ends_from_lines, reconciling_items
 from .dates import add_business_days, business_days, month_ends, next_business_day
@@ -39,6 +40,7 @@ class Params:
     size: str = "small"
     anomaly_rate: float = 0.02
     start_date: date = date(2025, 1, 1)
+    background: bool = True
 
 
 @dataclass
@@ -48,6 +50,7 @@ class Dataset:
     labels: list[dict[str, str]]
     anomaly_count: int
     company: str
+    background: list[dict[str, str]] = field(default_factory=list)
 
 
 def _month_days(days: list[date], me: date) -> list[date]:
@@ -185,7 +188,9 @@ def generate(params: Params) -> Dataset:
     base_count = _base_activity(b, size, params.months, start)
     anomaly_count = round(params.anomaly_rate * base_count)
     inject(b, anomaly_count)
+    if params.background:
+        add_background(b, size, params.months, start)
     _sort(b.tables)
     ends = month_ends_from_lines(b.tables["journal_lines"])
     b.tables["reconciling_items"] = reconciling_items(b.tables, ends)
-    return Dataset(params, b.tables, b.labels, anomaly_count, company)
+    return Dataset(params, b.tables, b.labels, anomaly_count, company, b.background)

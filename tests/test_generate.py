@@ -75,7 +75,7 @@ def test_bank_rows_clear_real_payments_and_receipts() -> None:
 
 
 def test_normal_postings_on_business_days() -> None:
-    ds = generate(make())
+    ds = generate(make(background=False))
     for r in ds.tables["journal_lines"]:
         assert is_business_day(date.fromisoformat(r["posting_date"]))
         assert r["period"] == r["posting_date"][:7]

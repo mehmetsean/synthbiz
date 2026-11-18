@@ -11,6 +11,7 @@ All rights reserved. You may view the code and run it to evaluate it. Commercial
 Files:
 - one file per table, see data_dictionary.md and schema.json
 - labels.csv lists every planted anomaly (table, row_id, anomaly_type, details)
+  Background rows are legitimate and not listed. manifest.json counts them.
 - manifest.json holds the seed, parameters and a sha256 of every file
 
 Check it with: synthbiz check <this folder>

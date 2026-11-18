@@ -7,6 +7,7 @@ import tempfile
 from collections import Counter
 from pathlib import Path
 
+from synthbiz.background import BACKGROUND_KINDS
 from synthbiz.check import run_checks
 from synthbiz.generate import Params, generate
 from synthbiz.io import read_dataset, verify_manifest, write_dataset
@@ -38,6 +39,10 @@ def build_block() -> str:
     counts = Counter(row["anomaly_type"] for row in labels)
     for kind in sorted(counts):
         lines.append(f"- {kind}: {counts[kind]}")
+    lines += ["", "Background rows (legitimate, not labeled):", ""]
+    bg = Counter(x["kind"] for x in ds.background)
+    for kind in BACKGROUND_KINDS:
+        lines.append(f"- {kind}: {bg[kind]}")
     lines += ["", "Checks:", ""]
     for r in run_checks(tables, labels):
         status = "PASS" if r.ok else f"FAIL ({len(r.messages)} findings)"

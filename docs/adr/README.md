@@ -13,3 +13,6 @@
 - [0011 Single-pass month-end balances](0011-single-pass-month-end-balances.md)
 - [0012 Input limits in check](0012-input-limits-in-check.md)
 - [0013 Row cap and integer form](0013-row-cap-and-integer-form.md)
+- [0014 Badges built in the Pages job](0014-badges-built-in-pages-job.md)
+- [0015 The close window in the dates rule](0015-close-window-in-the-dates-rule.md)
+- [0016 Unlabeled background rows](0016-unlabeled-background-rows.md)

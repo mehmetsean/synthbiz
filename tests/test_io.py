@@ -112,14 +112,27 @@ def test_read_missing_folder(tmp_path: Path) -> None:
         read_dataset(tmp_path)
 
 
-def test_golden_checksum_seed_42(tmp_path: Path) -> None:
-    ds = generate(Params(seed=42, months=3))
+def test_golden_checksum_seed_42_without_background(tmp_path: Path) -> None:
+    ds = generate(Params(seed=42, months=3, background=False))
     write_dataset(ds, tmp_path)
     assert sha(tmp_path / "journal_lines.csv") == (
         "5a93b15aa3e28d9158f1e0cadb32667d4ef59b91ab89e718cbe84d71f0a3c18c"
     )
     assert sha(tmp_path / "bank_transactions.csv") == (
         "5058b0f6ae6db056594cf3702181daa53437833a655023cff52e405d0a90dc64"
+    )
+
+
+def test_golden_checksum_seed_42(tmp_path: Path) -> None:
+    ds = generate(Params(seed=42, months=3))
+    write_dataset(ds, tmp_path)
+    assert (
+        sha(tmp_path / "journal_lines.csv")
+        == "843571fd5c5efc0c486f6962fd620c4d6acd44461475c0da9a3c9b0b3b1aef8f"
+    )
+    assert (
+        sha(tmp_path / "bank_transactions.csv")
+        == "c4f9e965c3fc6b3f227c5a9d1b41f46c3c22fe6684b04a6eaa032a7178ee0557"
     )
 
 

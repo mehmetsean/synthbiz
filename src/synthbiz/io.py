@@ -4,11 +4,14 @@ import csv
 import hashlib
 import json
 import re
+from collections import Counter
 from datetime import date
 from pathlib import Path
 from typing import Any
 
 from . import __version__
+from .background import BACKGROUND_KINDS
+from .builder import APPROVAL_LIMIT_CENTS
 from .generate import Dataset
 from .schema import (
     DISCLAIMER,
@@ -41,6 +44,7 @@ Copyright (c) 2026 Mehmet Tuzunkan.
 Files:
 - one file per table, see data_dictionary.md and schema.json
 - labels.csv lists every planted anomaly (table, row_id, anomaly_type, details)
+  Background rows are legitimate and not listed. manifest.json counts them.
 - manifest.json holds the seed, parameters and a sha256 of every file
 
 Check it with: synthbiz check <this folder>
@@ -127,6 +131,7 @@ def write_dataset(
     )
     written += ["labels.csv", "schema.json", "data_dictionary.md", "README.txt"]
     p = ds.params
+    counts = Counter(x["kind"] for x in ds.background)
     files = {name: _sha256(out / name) for name in sorted(written)}
     manifest = {
         "synthetic": True,
@@ -138,9 +143,12 @@ def write_dataset(
             "size": p.size,
             "anomaly_rate": p.anomaly_rate,
             "start_date": p.start_date.isoformat(),
+            "background": p.background,
             "format": fmt,
         },
         "anomaly_count": ds.anomaly_count,
+        "background_counts": {k: counts.get(k, 0) for k in BACKGROUND_KINDS},
+        "approval_limit_cents": APPROVAL_LIMIT_CENTS,
         "files": files,
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", "utf-8")
