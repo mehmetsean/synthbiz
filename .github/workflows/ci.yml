@@ -29,6 +29,7 @@ jobs:
       - run: mypy --strict src
       - run: pytest
       - run: python scripts/reproduce_readme.py --check
+      - run: python benchmarks/bench.py --quick --repeat 1
 
   ci:
     name: ci
