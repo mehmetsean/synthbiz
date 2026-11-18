@@ -4,7 +4,7 @@ Status: Accepted
 
 ## Context
 
-`check` and `generate` computed every balance at every month end by scanning all rows once per month end. That costs O(M x R) for M month ends and R rows. In the reference column of the docs/benchmark.md table, size large took 0.0525 s at 12 months and 0.6829 s at 36 months, 13 times longer for 3.1 times the rows. These numbers come from that table. The output files must stay byte for byte the same, and the runtime must stay stdlib only.
+`check` and `generate` computed every balance at every month end by scanning all rows once per month end. That costs O(M x R) for M month ends and R rows. In the reference column of the docs/benchmark.md table, size large took 0.0391 s at 12 months and 0.5775 s at 36 months, about 15 times longer for 3.1 times the rows. These numbers come from that table. The output files must stay byte for byte the same, and the runtime must stay stdlib only.
 
 ## Decision
 

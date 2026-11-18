@@ -4,6 +4,7 @@ Run from the repo root: python benchmarks/bench.py [--quick] [--repeat N]
 """
 
 import argparse
+import gc
 import json
 import platform
 import statistics
@@ -32,9 +33,16 @@ def median_time(fn: Callable[[], Any], repeat: int) -> tuple[float, Any]:
     times: list[float] = []
     result = None
     for _ in range(repeat):
-        start = time.perf_counter()
-        result = fn()
-        times.append(time.perf_counter() - start)
+        result = None
+        gc.collect()
+        gc.disable()
+        try:
+            start = time.perf_counter()
+            result = fn()
+            end = time.perf_counter()
+        finally:
+            gc.enable()
+        times.append(end - start)
     return statistics.median(times), result
 
 

@@ -11,6 +11,8 @@ For each size (small, medium, large) and each length (3, 12 and 36 months) with 
 - check (new): `synthbiz.check.run_checks` as it is now.
 - check (reference): the old per-month rescan code, kept in `benchmarks/baseline.py`.
 
+Before each timed run the script runs a full garbage collection and turns the collector off while it times, the same way Python's timeit module does, so a collection caused by an earlier case does not land inside a timing.
+
 It also prints the total row count and how many of the 5 rules pass on the synthbiz data and on the baseline data.
 
 ## The two baselines
@@ -69,14 +71,14 @@ Seed 42, median of 7 runs
 
 | size | months | rows | generate s | unlinked s | check s (new) | check s (reference) | synthbiz pass | unlinked pass |
 |---|---|---|---|---|---|---|---|---|
-| small | 3 | 378 | 0.0006 | 0.0013 | 0.0002 | 0.0002 | 5/5 | 0/5 |
-| small | 12 | 1780 | 0.0033 | 0.0064 | 0.0010 | 0.0025 | 5/5 | 0/5 |
-| small | 36 | 5454 | 0.0108 | 0.0207 | 0.0032 | 0.0245 | 5/5 | 0/5 |
-| medium | 3 | 1213 | 0.0020 | 0.0044 | 0.0006 | 0.0008 | 5/5 | 0/5 |
-| medium | 12 | 5568 | 0.0098 | 0.0197 | 0.0032 | 0.0088 | 5/5 | 0/5 |
-| medium | 36 | 17161 | 0.0318 | 0.0626 | 0.0194 | 0.0939 | 5/5 | 0/5 |
-| large | 3 | 3547 | 0.0062 | 0.0122 | 0.0018 | 0.0028 | 5/5 | 0/5 |
-| large | 12 | 16498 | 0.0299 | 0.0630 | 0.0163 | 0.0525 | 5/5 | 0/5 |
-| large | 36 | 51136 | 0.1049 | 0.1857 | 0.2044 | 0.6829 | 5/5 | 0/5 |
+| small | 3 | 378 | 0.0006 | 0.0012 | 0.0002 | 0.0002 | 5/5 | 0/5 |
+| small | 12 | 1780 | 0.0029 | 0.0060 | 0.0009 | 0.0024 | 5/5 | 0/5 |
+| small | 36 | 5454 | 0.0095 | 0.0188 | 0.0030 | 0.0207 | 5/5 | 0/5 |
+| medium | 3 | 1213 | 0.0019 | 0.0041 | 0.0006 | 0.0008 | 5/5 | 0/5 |
+| medium | 12 | 5568 | 0.0089 | 0.0189 | 0.0029 | 0.0090 | 5/5 | 0/5 |
+| medium | 36 | 17161 | 0.0279 | 0.0597 | 0.0106 | 0.0719 | 5/5 | 0/5 |
+| large | 3 | 3547 | 0.0053 | 0.0121 | 0.0018 | 0.0027 | 5/5 | 0/5 |
+| large | 12 | 16498 | 0.0260 | 0.0566 | 0.0101 | 0.0391 | 5/5 | 0/5 |
+| large | 36 | 51136 | 0.0858 | 0.1792 | 0.0544 | 0.5775 | 5/5 | 0/5 |
 
-Timings depend on the machine, the Python version and what else is running. Rerun the command to get your own numbers. At 3 months both check versions finish in a few milliseconds or less, and the two are equal at small (0.0002 s each) and close at the other sizes, so noise dominates. At large with 36 months the new check took 0.2044 s against 0.6829 s for the reference in this run. The same case ran in about 0.08 s when timed alone outside the script, so the repeats inside the script are noisy for this case.
+Timings depend on the machine, the Python version and what else is running. Rerun the command to get your own numbers. At 3 months both check versions finish in a few milliseconds or less, so noise dominates. At large with 36 months the new check took 0.0544 s against 0.5775 s for the reference in this run. Runs on the same machine differ from each other, so rerun it a few times to see the spread.
