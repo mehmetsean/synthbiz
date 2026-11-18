@@ -23,7 +23,10 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
+      - run: pip install ".[dev]"
+      - run: pytest --junitxml="$RUNNER_TEMP/junit.xml" --cov-report=json:"$RUNNER_TEMP/coverage.json"
       - run: pip wheel . --no-deps -w _site
+      - run: python scripts/make_badges.py "$RUNNER_TEMP/coverage.json" "$RUNNER_TEMP/junit.xml" _site/badges
       - run: cp site/* _site/
       - run: |
           python -c "import glob, json; json.dump({'wheel': glob.glob('_site/*.whl')[0].split('/')[-1]}, open('_site/wheel.json', 'w'))"

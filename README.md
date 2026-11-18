@@ -1,5 +1,9 @@
 # synthbiz
 
+[![coverage](https://mehmetsean.github.io/synthbiz/badges/coverage.svg)](https://mehmetsean.github.io/synthbiz/badges/coverage.svg) [![tests](https://mehmetsean.github.io/synthbiz/badges/tests.svg)](https://mehmetsean.github.io/synthbiz/badges/tests.svg)
+
+The badges are built by this repo on each Pages build of main. To check the numbers yourself, run `pytest` after `pip install -e ".[dev]"`.
+
 Seeded synthetic finance data for one fictional small manufacturer. The tables link to each other and reconcile, and known problems are planted and labeled.
 
 ## Who it is for
