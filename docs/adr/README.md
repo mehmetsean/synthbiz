@@ -12,3 +12,4 @@
 - [0010 All rights reserved from 0.1.1](0010-all-rights-reserved.md)
 - [0011 Single-pass month-end balances](0011-single-pass-month-end-balances.md)
 - [0012 Input limits in check](0012-input-limits-in-check.md)
+- [0013 Row cap and integer form](0013-row-cap-and-integer-form.md)
