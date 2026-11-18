@@ -38,4 +38,14 @@ These are installed with the dev extra, together with pyarrow. They are used to 
 | mypy | MIT |
 | pyyaml | MIT |
 
+## Browser test tool
+
+Installed with the browser extra. Used to test the demo page only.
+
+| Part | License |
+| --- | --- |
+| Playwright for Python | Apache-2.0 |
+
+The CI browser job downloads Chromium through Playwright for testing only. Nothing of it ships.
+
 To check a Python package license, install it and run `pip show <name>`. To check Pyodide and micropip, open the LICENSE file at https://github.com/pyodide/pyodide and https://github.com/pyodide/micropip.

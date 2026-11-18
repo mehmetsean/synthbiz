@@ -31,7 +31,7 @@ jobs:
       - run: python scripts/reproduce_readme.py --check
       - run: python benchmarks/bench.py --quick --repeat 1
 
-  # Not in the ci job below on purpose: a CDN outage must not block merges.
+  # Optional job
   browser:
     name: browser
     runs-on: ubuntu-latest
@@ -51,7 +51,7 @@ jobs:
           python -c "import glob, json; json.dump({'wheel': glob.glob('_site/*.whl')[0].split('/')[-1]}, open('_site/wheel.json', 'w'))"
       - run: |
           python -m http.server 8000 --directory _site &
-          sleep 2
+          curl --silent --fail --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:8000/ > /dev/null
           pytest tests/test_browser.py --no-cov
         env:
           SYNTHBIZ_DEMO_URL: http://localhost:8000/
