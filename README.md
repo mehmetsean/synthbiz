@@ -250,7 +250,7 @@ Checks:
 - dates: PASS
 - manifest: PASS
 
-manifest.json sha256: 6b1a67596044b60b315017199a39ec3793e3380dcd7056317956209ac60fcd1d
+manifest.json sha256: 34d7be7c554ddf6d75e3087a5d944498ce008720df2746fae3ba6a2c450ffb8f
 <!-- numbers:end -->
 
 See docs/spec.md for scope, DATA.md for data sources and docs/adr/ for design decisions.

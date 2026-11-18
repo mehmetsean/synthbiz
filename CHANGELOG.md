@@ -2,7 +2,7 @@
 
 All notable changes are listed here. The format follows Keep a Changelog.
 
-## Unreleased
+## 0.2.0 - 2026-11-17
 
 ### Added
 
@@ -10,20 +10,6 @@ All notable changes are listed here. The format follows Keep a Changelog.
 - New labeled anomaly type typo_duplicate_payment, after near_duplicate_payment in the rotation. There are ten types now.
 - manifest.json has `parameters.background`, `background_counts` and `approval_limit_cents`.
 - `Dataset.background` and `Builder.mark_background`.
-
-### Changed
-
-- The dates rule allows a previous-period line posted on or before the 3rd business day of its month (the close window). ADR 15.
-- out_of_period_entry is never planted inside the close window.
-- Default output changes with background on and with the new type in the rotation: the example in examples/seed42-3m, the README numbers and the golden checksums are regenerated. With `--no-background` the journal and bank files keep their 0.1.2 bytes only while the rotation stays within the first two anomaly types (at most two planted anomalies). Seed 42 with 3 months and the default rate is pinned by golden checksums for the journal and bank files in tests/test_io.py.
-
-- Demo previews show money columns as US dollars, for example $12,345.67, right-aligned. The zip download keeps raw cents.
-- The demo sends the list of money columns with each table preview. The list comes from the schema.
-- Demo preview tables show a hint when a table is wider than its box. Long text cells wrap. Cells over 60 characters, such as anomaly details, sit behind a keyboard-accessible toggle.
-- The demo page has one source link, in the header.
-
-### Added
-
 - scripts/make_badges.py writes coverage.svg and tests.svg from pytest output, using only the standard library. The Pages build runs the tests and publishes both files under badges/. The README shows them. No outside badge service is used.
 - Tests for the badge script, including contrast ratios and a property test that random coverage values from 0 to 100 and test counts give a valid SVG.
 - The Pages build also runs on pull requests, without deploying.
@@ -31,6 +17,16 @@ All notable changes are listed here. The format follows Keep a Changelog.
 - synthbiz.schema.money_columns(table) returns the money columns of a table.
 - A new optional extra, browser, installs Playwright for that test. Runtime dependencies are still empty.
 - A test that the zip download keeps raw cents.
+
+### Changed
+
+- The dates rule allows a previous-period line posted on or before the 3rd business day of its month (the close window). ADR 15.
+- out_of_period_entry is never planted inside the close window.
+- Default output changes with background on and with the new type in the rotation: the example in examples/seed42-3m, the README numbers and the golden checksums are regenerated. With `--no-background` the journal and bank files keep their 0.1.2 bytes only while the rotation stays within the first two anomaly types (at most two planted anomalies). Seed 42 with 3 months and the default rate is pinned by golden checksums for the journal and bank files in tests/test_io.py.
+- Demo previews show money columns as US dollars, for example $12,345.67, right-aligned. The zip download keeps raw cents.
+- The demo sends the list of money columns with each table preview. The list comes from the schema.
+- Demo preview tables show a hint when a table is wider than its box. Long text cells wrap. Cells over 60 characters, such as anomaly details, sit behind a keyboard-accessible toggle.
+- The demo page has one source link, in the header.
 
 ## 0.1.2 - 2026-11-17
 
