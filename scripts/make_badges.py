@@ -3,12 +3,14 @@
 Usage: make_badges.py COVERAGE_JSON JUNIT_XML OUT_DIR
 
 Coverage colors: green at 90 percent or more, yellow at 75 or more, else red.
-Test badge is red when any test failed.
+Test badge is red when any test failed or none ran.
+The Pages job runs this script only after pytest passes.
 """
 
 import json
 import sys
 import xml.etree.ElementTree as ET
+from decimal import ROUND_DOWN, Decimal
 from pathlib import Path
 from xml.sax.saxutils import escape
 
@@ -22,7 +24,8 @@ HEIGHT = 20
 PAD = 6
 
 NARROW = set("il.,:;|!'1 ")
-WIDE = set("mwMW%@")
+WIDE = set("mw%")
+NORMAL = set("abcdefghijknopqrstuvxyz023456789,-_")
 
 
 def char_width(ch: str) -> int:
@@ -30,21 +33,28 @@ def char_width(ch: str) -> int:
         return 4
     if ch in WIDE:
         return 10
-    return 7
+    if ch in NORMAL:
+        return 7
+    return 8
 
 
 def text_width(text: str) -> int:
     return sum(char_width(ch) for ch in text)
 
 
+def truncate(value: float) -> Decimal:
+    return Decimal(str(value)).quantize(Decimal("0.1"), rounding=ROUND_DOWN)
+
+
 def percent_text(value: float) -> str:
-    return f"{value:.1f}%"
+    return f"{truncate(value)}%"
 
 
 def coverage_color(value: float) -> str:
-    if value >= 90:
+    shown = truncate(value)
+    if shown >= 90:
         return GREEN
-    if value >= 75:
+    if shown >= 75:
         return YELLOW
     return RED
 
@@ -52,11 +62,13 @@ def coverage_color(value: float) -> str:
 def tests_text(passed: int, failed: int) -> str:
     if failed > 0:
         return f"{passed} passed, {failed} failed"
+    if passed == 0:
+        return "no tests"
     return f"{passed} passed"
 
 
-def tests_color(failed: int) -> str:
-    return RED if failed > 0 else GREEN
+def tests_color(passed: int, failed: int) -> str:
+    return RED if failed > 0 or passed == 0 else GREEN
 
 
 def make_badge(label: str, value: str, color: str) -> str:
@@ -112,7 +124,7 @@ def main(args: list[str]) -> int:
     out = Path(args[2])
     out.mkdir(parents=True, exist_ok=True)
     cov_svg = make_badge("coverage", percent_text(coverage), coverage_color(coverage))
-    test_svg = make_badge("tests", tests_text(passed, failed), tests_color(failed))
+    test_svg = make_badge("tests", tests_text(passed, failed), tests_color(passed, failed))
     (out / "coverage.svg").write_text(cov_svg, encoding="utf-8")
     (out / "tests.svg").write_text(test_svg, encoding="utf-8")
     return 0
