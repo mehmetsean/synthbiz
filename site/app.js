@@ -27,7 +27,44 @@ function readInputs() {
   ];
 }
 
-function makeTable(title, rows, columns) {
+function formatDollars(value) {
+  const cents = BigInt(value);
+  const abs = cents < 0n ? -cents : cents;
+  const dollars = (abs / 100n).toString().replace(/\B(?=(\d{3})+$)/g, ",");
+  const rest = String(abs % 100n).padStart(2, "0");
+  return (cents < 0n ? "-" : "") + "$" + dollars + "." + rest;
+}
+
+const LONG_TEXT = 60;
+const WRAP_TEXT = 24;
+
+function makeCell(value, isMoney) {
+  const text = String(value);
+  if (isMoney && /^-?\d+$/.test(text)) return el("td", formatDollars(text), "num");
+  const td = el("td");
+  if (text.length <= LONG_TEXT) {
+    td.textContent = text;
+    if (text.length > WRAP_TEXT) td.className = "wrap";
+    return td;
+  }
+  td.className = "long";
+  const box = el("details");
+  box.appendChild(el("summary", text.slice(0, LONG_TEXT) + "..."));
+  box.appendChild(el("p", text));
+  td.appendChild(box);
+  return td;
+}
+
+function updateHint(wrap, hint) {
+  hint.hidden = wrap.scrollWidth <= wrap.clientWidth;
+}
+
+function makeTable(title, rows, columns, money) {
+  const moneyCols = new Set(money || []);
+  const box = el("div", undefined, "table-box");
+  const hint = el("p", "Scroll sideways to see all columns.", "hint");
+  hint.hidden = true;
+  box.appendChild(hint);
   const wrap = el("div", undefined, "scroll");
   wrap.tabIndex = 0;
   wrap.setAttribute("role", "region");
@@ -36,7 +73,7 @@ function makeTable(title, rows, columns) {
   table.appendChild(el("caption", title));
   const head = el("tr");
   for (const c of columns) {
-    const th = el("th", c);
+    const th = el("th", c, moneyCols.has(c) ? "num" : undefined);
     th.scope = "col";
     head.appendChild(th);
   }
@@ -46,12 +83,14 @@ function makeTable(title, rows, columns) {
   const body = el("tbody");
   for (const r of rows) {
     const tr = el("tr");
-    for (const c of columns) tr.appendChild(el("td", String(r[c])));
+    for (const c of columns) tr.appendChild(makeCell(r[c], moneyCols.has(c)));
     body.appendChild(tr);
   }
   table.appendChild(body);
   wrap.appendChild(table);
-  return wrap;
+  box.appendChild(wrap);
+  box.updateHint = () => updateHint(wrap, hint);
+  return box;
 }
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -130,6 +169,10 @@ function renderChart(data) {
   box.appendChild(makeTable("Anomaly counts by type", asTable, ["anomaly_type", "count"]));
 }
 
+function refreshHints() {
+  for (const box of document.querySelectorAll(".table-box")) box.updateHint();
+}
+
 function render(data) {
   renderSummary(data);
   renderChart(data);
@@ -157,9 +200,10 @@ function render(data) {
   for (const [name, t] of Object.entries(data.tables)) {
     const cols = t.preview.length > 0 ? Object.keys(t.preview[0]) : [];
     const title = name + " (" + t.rows + " rows, first " + t.preview.length + ")";
-    tables.appendChild(makeTable(title, t.preview, cols));
+    tables.appendChild(makeTable(title, t.preview, cols, t.money));
   }
   document.getElementById("results").hidden = false;
+  refreshHints();
 }
 
 async function generate(event) {
@@ -227,6 +271,7 @@ async function start() {
   }
 }
 
+window.addEventListener("resize", refreshHints);
 document.getElementById("form").addEventListener("submit", generate);
 downloadBtn.addEventListener("click", download);
 start();
