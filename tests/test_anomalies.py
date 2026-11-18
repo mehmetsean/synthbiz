@@ -153,3 +153,72 @@ def test_planted_journal_memos_also_appear_on_normal_rows() -> None:
     normal_memos = {r["memo"] for r in lines if r["line_id"] not in planted}
     assert planted_memos
     assert planted_memos <= normal_memos
+
+
+def _distance_ok(a: str, b: str) -> bool:
+    if a == b:
+        return False
+    if len(a) == len(b):
+        diff = [i for i in range(len(a)) if a[i] != b[i]]
+        return (
+            len(diff) == 2
+            and diff[1] == diff[0] + 1
+            and a[diff[0]] == b[diff[1]]
+            and a[diff[1]] == b[diff[0]]
+        )
+    if abs(len(a) - len(b)) != 1:
+        return False
+    long, short = (a, b) if len(a) > len(b) else (b, a)
+    return any(long[:i] + long[i + 1 :] == short for i in range(len(long)))
+
+
+def test_typo_duplicate_payment() -> None:
+    ds = make()
+    labels = by_type(ds, "typo_duplicate_payment")
+    assert len(labels) >= 3
+    invoices = {i["invoice_id"]: i for i in ds.tables["ap_invoices"]}
+    seen = set()
+    for lab in labels:
+        pay = row(ds, lab)
+        twin = invoices[pay["invoice_id"]]
+        originals = [
+            i
+            for i in invoices.values()
+            if i["vendor_id"] == twin["vendor_id"]
+            and i["amount_cents"] == twin["amount_cents"]
+            and i["invoice_date"] == twin["invoice_date"]
+            and i["invoice_id"] != twin["invoice_id"]
+            and _distance_ok(i["invoice_number"], twin["invoice_number"])
+        ]
+        assert len(originals) == 1
+        assert twin["invoice_number"]
+        assert pay["amount_cents"] == twin["amount_cents"]
+        paid_first = [
+            p
+            for p in ds.tables["ap_payments"]
+            if p["invoice_id"] == originals[0]["invoice_id"]
+        ]
+        assert len(paid_first) == 1
+        assert paid_first[0]["payment_date"] <= pay["payment_date"]
+        assert originals[0]["invoice_number"] in lab["details"]
+        assert twin["invoice_number"] in lab["details"]
+        assert paid_first[0]["payment_id"] in lab["details"]
+        seen.add(lab["row_id"])
+    assert len(seen) == len(labels)
+
+
+def test_typo_duplicate_follows_near_duplicate() -> None:
+    i = ANOMALY_TYPES.index("near_duplicate_payment")
+    assert ANOMALY_TYPES[i + 1] == "typo_duplicate_payment"
+    assert len(ANOMALY_TYPES) == 10
+
+
+def test_out_of_period_never_in_close_window() -> None:
+    from synthbiz.dates import in_close_window
+
+    for seed in range(8):
+        ds = generate(Params(seed=seed, months=6, anomaly_rate=0.5))
+        labels = by_type(ds, "out_of_period_entry")
+        assert labels
+        for lab in labels:
+            assert not in_close_window(date.fromisoformat(row(ds, lab)["posting_date"]))
