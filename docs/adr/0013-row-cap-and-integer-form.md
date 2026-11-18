@@ -8,7 +8,7 @@ Status: Accepted
 
 ## Decision
 
-`MAX_ROWS_PER_FILE = 3_000_000` and `MAX_TOTAL_ROWS = 5_000_000` in `src/synthbiz/io.py`. For Parquet, the row count is the larger of the footer `num_rows` and the sum of the row group counts, read with `pq.ParquetFile`. A file over the cap, or one that would push the folder total over its cap, is refused with a one-line ValueError naming the file before any data is read. After reading, the table row count is checked again before any Python dict is built. For CSV, data rows are counted while reading and the reader stops as soon as the count passes either cap. Blank lines are not stored and do not count, so trailing blank lines cost no memory. `read_dataset` keeps one running total over every table file and labels.csv.
+`MAX_ROWS_PER_FILE = 3_000_000` and `MAX_TOTAL_ROWS = 5_000_000` in `src/synthbiz/io.py`. For Parquet, the row count is the larger of the footer `num_rows` and the sum of the row group counts, read with `pq.ParquetFile`. A file over the cap, or one that would push the folder total over its cap, is refused with a one-line ValueError naming the file before any data is read. After reading, the table row count is checked again before any Python dict is built. For CSV, data rows are counted while reading and the reader stops as soon as the count passes either cap. Trailing blank lines are not stored and do not count, so they cost no memory. A blank line between data rows is kept as one marker, and the read then fails with "is blank", as before. `read_dataset` keeps one running total over every table file and labels.csv.
 
 Integer columns accept only `-?[0-9]{1,18}` (ASCII digits, matched with `re.fullmatch`). The error text is the existing "is not a valid integer" line.
 
