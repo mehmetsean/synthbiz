@@ -10,7 +10,7 @@ from .dates import last_day_of_month
 from .schema import TABLE_NAMES, schema_dict
 
 MAX_MONTHS = 1200
-MAX_RECONCILING_ITEMS = 1_000_000
+MAX_RECONCILING_ITEMS = 200_000
 
 Tables = dict[str, list[dict[str, Any]]]
 Labels = list[dict[str, Any]]

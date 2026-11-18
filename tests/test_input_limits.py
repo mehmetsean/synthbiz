@@ -12,6 +12,7 @@ from synthbiz.check import (
     reconciling_items,
 )
 from synthbiz.cli import main
+from synthbiz.dates import month_ends
 from synthbiz.generate import Params, generate
 from synthbiz.io import read_dataset, write_dataset
 from synthbiz.schema import TABLE_NAMES
@@ -159,3 +160,25 @@ def test_cli_item_limit(
 def test_generated_data_stays_far_below_item_limit() -> None:
     ds = generate(Params(seed=42, months=36, size="large"))
     assert len(ds.tables["reconciling_items"]) < MAX_RECONCILING_ITEMS // 100
+
+
+def test_real_item_limit_is_exact() -> None:
+    ends = month_ends(date(2000, 1, 1), MAX_MONTHS)
+    tables: dict[str, list[dict[str, Any]]] = {n: [] for n in TABLE_NAMES}
+    tables["ap_payments"] = [{"payment_id": "P1", "payment_date": "2000-01-01"}]
+
+    def bank(day: str) -> dict[str, Any]:
+        return {
+            "bank_date": day,
+            "amount_cents": -100,
+            "ref_type": "AP_PAYMENT",
+            "ref_id": "P1",
+        }
+
+    rows = [bank("2100-01-01") for _ in range(166)]
+    rows.append(bank(ends[800].isoformat()))
+    tables["bank_transactions"] = rows
+    assert len(reconciling_items(tables, ends)) == MAX_RECONCILING_ITEMS
+    rows.append(bank(ends[1].isoformat()))
+    with pytest.raises(ValueError, match="more than 200000 reconciling items"):
+        reconciling_items(tables, ends)
