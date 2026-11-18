@@ -1,4 +1,4 @@
 table,row_id,anomaly_type,details
 ap_payments,APP-000020,exact_duplicate_payment,"Same vendor, invoice and amount as APP-000019"
 ap_payments,APP-000022,near_duplicate_payment,"Invoice 51904 paid again under V-0009 (Redwood Plastics, Co), similar to V-0005; first paid as APP-000021"
-ap_invoices,API-000040,split_invoice,"3 invoices from V-0002 on 2025-02-10 (API-000040, API-000041, API-000042) each under the 500000 cent limit, total 1431288 cents"
+ap_payments,APP-000024,typo_duplicate_payment,Invoice 81121 entered again as 81112 under V-0002 with the same amount; first paid as APP-000023

@@ -23,7 +23,7 @@ Inside:
 - labels.csv, one row per planted anomaly
 - schema.json and data_dictionary.md
 - README.txt with the synthetic notice
-- manifest.json with the seed, parameters and a sha256 of every file
+- manifest.json with the seed, parameters, background counts, the approval limit and a sha256 of every file
 
 Check it:
 
