@@ -1,15 +1,22 @@
+import csv
+import hashlib
+import json
 from datetime import date, timedelta
+from pathlib import Path
 
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
+from synthbiz.cli import main
 from synthbiz.workforce import (
     MAX_DAYS,
     MAX_STAFF,
     TABLES,
     WorkforceParams,
     generate_workforce,
+    known_files,
+    write_workforce,
 )
 
 KINDS = {"unavailable", "prefer_off", "prefer_on"}
@@ -162,3 +169,53 @@ def test_properties_for_any_size(seed: int, staff: int, days: int) -> None:
     assert {r["date"] for r in a.tables["demand"]} <= {
         (date(2025, 6, 2) + timedelta(days=i)).isoformat() for i in range(days)
     }
+
+
+def test_write_files_and_manifest(tmp_path: Path) -> None:
+    ds = generate_workforce(make())
+    write_workforce(ds, tmp_path)
+    assert sorted(p.name for p in tmp_path.iterdir()) == sorted(known_files())
+    m = json.loads((tmp_path / "manifest.json").read_text())
+    assert m["synthetic"] is True
+    assert m["parameters"] == {
+        "seed": 7,
+        "staff": 20,
+        "days": 14,
+        "start_date": "2025-06-02",
+    }
+    for name, digest in m["files"].items():
+        data = (tmp_path / name).read_bytes()
+        assert hashlib.sha256(data).hexdigest() == digest
+    assert "synthetic" in (tmp_path / "README.txt").read_text().lower()
+    assert "All rights reserved" in (tmp_path / "README.txt").read_text()
+
+
+def test_csv_round_trip_and_bytes_are_stable(tmp_path: Path) -> None:
+    a, b = tmp_path / "a", tmp_path / "b"
+    write_workforce(generate_workforce(make()), a)
+    write_workforce(generate_workforce(make()), b)
+    for name in known_files():
+        assert (a / name).read_bytes() == (b / name).read_bytes()
+    with (a / "staff.csv").open(newline="") as f:
+        rows = list(csv.DictReader(f))
+    assert list(rows[0]) == TABLES["staff"]
+    assert len(rows) == 20
+
+
+def test_write_refuses_non_empty_folder(tmp_path: Path) -> None:
+    (tmp_path / "x.txt").write_text("keep")
+    ds = generate_workforce(make())
+    with pytest.raises(FileExistsError):
+        write_workforce(ds, tmp_path)
+    write_workforce(ds, tmp_path, force=True)
+    assert (tmp_path / "x.txt").read_text() == "keep"
+
+
+def test_cli_workforce(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    args = ["workforce", "--seed", "3", "--staff", "12", "--days", "7"]
+    assert main([*args, "--out", str(tmp_path)]) == 0
+    assert "Wrote 4 tables" in capsys.readouterr().out
+    assert main([*args, "--out", str(tmp_path)]) == 1
+    assert "not empty" in capsys.readouterr().out
+    assert main(["workforce", "--staff", "0", "--out", str(tmp_path / "n")]) == 1
+    assert "staff must be" in capsys.readouterr().out
