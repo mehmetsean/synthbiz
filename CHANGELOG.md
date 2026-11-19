@@ -2,6 +2,13 @@
 
 All notable changes are listed here. The format follows Keep a Changelog.
 
+## Unreleased
+
+### Added
+
+- Workforce tables for shift scheduling: `synthbiz workforce` writes staff.csv, shifts.csv, demand.csv and availability.csv with a manifest, from `--seed`, `--staff` and `--days`. See docs/adr/0017-workforce-tables-separate-from-finance.md.
+- `names.person_names`.
+
 ## 0.2.0 - 2026-11-17
 
 ### Added

@@ -37,6 +37,14 @@ Python 3.11 or newer. Parquet output needs the extra: `pip install -e ".[parquet
 
 `generate` stops if the output folder is not empty. Add `--force` to replace the synthbiz files in it. Other files in the folder are left alone.
 
+## Workforce tables
+
+A second generator writes synthetic workforce tables for shift scheduling tools. It is separate from the finance tables.
+
+        synthbiz workforce --seed 42 --staff 20 --days 28 --out workforce/
+
+It writes staff.csv, shifts.csv, demand.csv, availability.csv, data_dictionary.md, README.txt and manifest.json. Wages are integer cents and times are integer minutes. Staff is 1 to 500 and days is 1 to 366. The same seed gives the same bytes. Every file set is synthetic data. See docs/adr/0017-workforce-tables-separate-from-finance.md. `synthbiz check` does not read these folders.
+
 ## Demo in the browser
 
 https://mehmetsean.github.io/synthbiz/
@@ -186,7 +194,7 @@ The background step runs after the planted anomalies. Every journal, invoice, pa
 
 ## Limits
 
-- v0.1 is finance only: one fictional company, ten tables.
+- The finance generator is one fictional company with ten tables. The workforce generator is separate and has four tables.
 - Dates must be written YYYY-MM-DD. check refuses a journal that spans more than 1200 months, and it stops when the reconciling items would pass 200,000. Integer columns accept only plain digits with an optional minus sign, up to 18 digits. A Parquet file with more than 3,000,000 rows is refused from its metadata. A CSV file is stopped once it passes 3,000,000 rows. A folder may hold at most 5,000,000 rows in total.
 - Holidays are US federal holidays only.
 - No multi-currency, payroll or tax.
