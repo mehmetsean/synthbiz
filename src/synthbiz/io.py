@@ -87,7 +87,7 @@ def known_files() -> list[str]:
     ]
 
 
-def _prepare(out: Path, force: bool) -> None:
+def _prepare(out: Path, force: bool, names: list[str] | None = None) -> None:
     if out.exists() and not out.is_dir():
         raise FileExistsError(f"{out} is a file, not a folder")
     out.mkdir(parents=True, exist_ok=True)
@@ -97,7 +97,7 @@ def _prepare(out: Path, force: bool) -> None:
         raise FileExistsError(
             f"{out} is not empty, use --force to replace the synthbiz files in it"
         )
-    for name in known_files():
+    for name in names if names is not None else known_files():
         f = out / name
         if f.is_file() or f.is_symlink():
             f.unlink()

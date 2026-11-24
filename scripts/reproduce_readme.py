@@ -11,6 +11,16 @@ from synthbiz.background import BACKGROUND_KINDS
 from synthbiz.check import run_checks
 from synthbiz.generate import Params, generate
 from synthbiz.io import read_dataset, verify_manifest, write_dataset
+from synthbiz.names import FIRST_NAMES, LAST_NAMES
+from synthbiz.workforce import (
+    MAX_DAYS,
+    MAX_STAFF,
+    WEEKDAY_SHARE,
+    WEEKEND_FACTOR,
+    WorkforceParams,
+    generate_workforce,
+    write_workforce,
+)
 
 START = "<!-- numbers:start -->"
 END = "<!-- numbers:end -->"
@@ -49,7 +59,37 @@ def build_block() -> str:
         lines.append(f"- {r.rule}: {status}")
     lines.append(f"- manifest: {'PASS' if manifest_errors == [] else 'FAIL'}")
     lines += ["", f"manifest.json sha256: {digest}"]
+    lines += workforce_lines()
     return "\n".join(lines)
+
+
+def workforce_lines() -> list[str]:
+    ds = generate_workforce(WorkforceParams(seed=42, staff=20, days=28))
+    big = generate_workforce(WorkforceParams(seed=42, staff=MAX_STAFF, days=MAX_DAYS))
+    with tempfile.TemporaryDirectory() as tmp:
+        a, b = Path(tmp) / "a", Path(tmp) / "b"
+        write_workforce(ds, a)
+        write_workforce(generate_workforce(ds.params), b)
+        same = all(
+            (a / p.name).read_bytes() == (b / p.name).read_bytes() for p in a.iterdir()
+        )
+    lines = ["", "Workforce example: seed 42, 20 staff, 28 days.", ""]
+    lines.append(f"- tables: {len(ds.tables)}")
+    for name, rows in ds.tables.items():
+        lines.append(f"- {name}: {len(rows)}")
+    lines.append(f"- staff limit: 1 to {MAX_STAFF}")
+    lines.append(f"- days limit: 1 to {MAX_DAYS}")
+    lines.append(f"- first names: {len(FIRST_NAMES)}")
+    lines.append(f"- last names: {len(LAST_NAMES)}")
+    lines.append(f"- name pairs: {len(FIRST_NAMES) * len(LAST_NAMES)}")
+    shares = ", ".join(f"{k} {v}" for k, v in WEEKDAY_SHARE.items())
+    lines.append(f"- demand shares: {shares}")
+    lines.append(f"- weekend factor: {WEEKEND_FACTOR}")
+    lines.append(f"- same seed gives same bytes: {'PASS' if same else 'FAIL'}")
+    lines.append(f"- availability rows, upper bound: {MAX_STAFF * MAX_DAYS}")
+    measured = len(big.tables["availability"])
+    lines.append(f"- availability rows, measured at the limits: {measured}")
+    return lines
 
 
 def replace_block(text: str, block: str) -> str:

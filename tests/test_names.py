@@ -1,6 +1,15 @@
 import random
+import re
 
-from synthbiz.names import company_name, customer_names, name_variant, vendor_names
+import pytest
+
+from synthbiz.names import (
+    company_name,
+    customer_names,
+    name_variant,
+    person_names,
+    vendor_names,
+)
 
 
 def test_vendor_names_unique_and_deterministic() -> None:
@@ -25,3 +34,11 @@ def test_name_variant_differs_and_keeps_core() -> None:
         v = name_variant(name, rng)
         assert v != name
         assert v.split()[0] == name.split()[0]
+
+
+def test_person_names_unique_deterministic_and_capped() -> None:
+    a = person_names(random.Random(4), 500)
+    assert a == person_names(random.Random(4), 500)
+    assert len(set(a)) == 500
+    with pytest.raises(ValueError, match=re.escape("too many names requested")):
+        person_names(random.Random(4), 573)

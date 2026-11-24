@@ -23,6 +23,7 @@ v0.1, finance core (what ledgercheck needs first):
 v0.2, realism: legitimate unlabeled background rows, typo duplicate payments, and the approval limit in manifest.json (so rules can be scored on false alarms).
 v0.3, assets and maintenance: assets, depreciation and maintenance work orders, tied to the GL and to AP for parts (for capplan).
 v0.4, tickets and inventory: help-desk tickets linked to vendors, customers and assets (for triage-lab); inventory and purchase orders.
+Workforce tables (unreleased): staff, shifts, demand and availability for shift scheduling tools, as a separate `synthbiz workforce` command. See ADR 17.
 
 ## Non-goals
 - No training on, or imitation of, any real company's data.

@@ -31,6 +31,16 @@ LONG_SUFFIX = {
     "Ltd": "Limited",
     "Corp": "Corporation",
 }
+FIRST_NAMES = [
+    "Ada", "Ben", "Cora", "Dev", "Elena", "Femi", "Gus", "Hana", "Ivan",
+    "Jun", "Kira", "Leo", "Mina", "Noah", "Oona", "Pablo", "Quinn", "Rosa",
+    "Sam", "Tara", "Uma", "Vera", "Wes", "Xena", "Yuri", "Zoe",
+]  # fmt: skip
+LAST_NAMES = [
+    "Alder", "Brook", "Cole", "Dale", "Ellis", "Frost", "Grove", "Hale",
+    "Ives", "Jarvis", "Knox", "Lane", "Moss", "Nash", "Oakes", "Park",
+    "Reed", "Shaw", "Tate", "Vance", "Wells", "Young",
+]  # fmt: skip
 
 
 def _unique_names(
@@ -67,3 +77,10 @@ def name_variant(name: str, rng: random.Random) -> str:
         core,
     ]
     return rng.choice(options)
+
+
+def person_names(rng: random.Random, count: int) -> list[str]:
+    combos = [(a, b) for a in FIRST_NAMES for b in LAST_NAMES]
+    if count > len(combos):
+        raise ValueError("too many names requested")
+    return [f"{a} {b}" for a, b in rng.sample(combos, count)]
