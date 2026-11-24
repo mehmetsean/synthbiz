@@ -20,6 +20,7 @@ def _generate(args: argparse.Namespace) -> int:
         anomaly_rate=args.anomaly_rate,
         start_date=args.start_date,
         background=args.background,
+        budget_and_cash_flow=args.budget_and_cash_flow,
     )
     try:
         ds = generate(params)
@@ -30,6 +31,9 @@ def _generate(args: argparse.Namespace) -> int:
     rows = sum(len(t) for t in ds.tables.values())
     print(f"Wrote {len(ds.tables)} tables ({rows} rows) to {args.out}")
     print(f"Planted {ds.anomaly_count} anomalies, listed in labels.csv")
+    if "budget_lines" in ds.tables:
+        n = len(ds.labels) - ds.anomaly_count
+        print(f"Planted {n} budget variances, listed in labels.csv")
     return 0
 
 
@@ -104,6 +108,11 @@ def main(argv: list[str] | None = None) -> int:
         dest="background",
         action="store_false",
         help="leave out the legitimate unlabeled background rows",
+    )
+    g.add_argument(
+        "--budget-and-cash-flow",
+        action="store_true",
+        help="add budget_lines and fixed asset, loan and equity entries",
     )
     g.add_argument("--format", choices=FORMATS, default="csv")
     g.add_argument("--out", required=True)

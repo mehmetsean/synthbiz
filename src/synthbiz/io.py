@@ -16,6 +16,7 @@ from .generate import Dataset
 from .schema import (
     DISCLAIMER,
     LABEL_COLUMNS,
+    OPTIONAL_TABLE_NAMES,
     TABLE_NAMES,
     columns,
     data_dictionary,
@@ -63,7 +64,7 @@ def _write_parquet(path: Path, name: str, rows: list[dict[str, Any]]) -> None:
     import pyarrow as pa
     import pyarrow.parquet as pq
 
-    kinds = {c["name"]: c["type"] for c in schema_dict()["tables"][name]["columns"]}
+    kinds = {c["name"]: c["type"] for c in schema_dict(True)["tables"][name]["columns"]}
     types = {"string": pa.string(), "integer": pa.int64(), "date": pa.date32()}
     fields = [pa.field(c, types[kinds[c]]) for c in columns(name)]
     data: dict[str, list[Any]] = {}
@@ -77,7 +78,8 @@ def _write_parquet(path: Path, name: str, rows: list[dict[str, Any]]) -> None:
 
 def known_files() -> list[str]:
     """Every file name synthbiz may write into a dataset folder."""
-    names = [f"{t}.{ext}" for t in TABLE_NAMES for ext in ("csv", "parquet")]
+    every = TABLE_NAMES + OPTIONAL_TABLE_NAMES
+    names = [f"{t}.{ext}" for t in every for ext in ("csv", "parquet")]
     return names + [
         "labels.csv",
         "schema.json",
@@ -110,14 +112,15 @@ def write_dataset(
         raise ValueError(f"format must be one of {FORMATS}")
     _prepare(out, force)
     written: list[str] = []
-    for name in TABLE_NAMES:
+    plan = "budget_lines" in ds.tables
+    for name in TABLE_NAMES + (OPTIONAL_TABLE_NAMES if plan else []):
         if fmt == "csv":
             _write_csv(out / f"{name}.csv", columns(name), ds.tables[name])
         else:
             _write_parquet(out / f"{name}.parquet", name, ds.tables[name])
         written.append(f"{name}.{fmt}")
     _write_csv(out / "labels.csv", LABEL_COLUMNS, ds.labels)
-    schema = schema_dict()
+    schema = schema_dict(plan)
     (out / "schema.json").write_text(json.dumps(schema, indent=2) + "\n", "utf-8")
     (out / "data_dictionary.md").write_text(data_dictionary(schema), "utf-8")
     (out / "README.txt").write_text(
@@ -133,7 +136,7 @@ def write_dataset(
     p = ds.params
     counts = Counter(x["kind"] for x in ds.background)
     files = {name: _sha256(out / name) for name in sorted(written)}
-    manifest = {
+    manifest: dict[str, Any] = {
         "synthetic": True,
         "synthbiz_version": __version__,
         "company": ds.company,
@@ -151,6 +154,11 @@ def write_dataset(
         "approval_limit_cents": APPROVAL_LIMIT_CENTS,
         "files": files,
     }
+    if plan:
+        manifest["parameters"]["budget_and_cash_flow"] = True
+        manifest["budget_variance_count"] = sum(
+            1 for lab in ds.labels if lab["table"] == "budget_lines"
+        )
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", "utf-8")
 
 
@@ -329,7 +337,7 @@ def _read_parquet(
 
 
 def _types(table: str) -> dict[str, str]:
-    cols = schema_dict()["tables"][table]["columns"]
+    cols = schema_dict(True)["tables"][table]["columns"]
     return {c["name"]: c["type"] for c in cols}
 
 
@@ -341,7 +349,7 @@ def read_dataset(
         raise FileNotFoundError(f"folder not found: {folder}")
     tables: dict[str, list[dict[str, Any]]] = {}
     budget = _Budget()
-    for name in TABLE_NAMES:
+    for name in TABLE_NAMES + OPTIONAL_TABLE_NAMES:
         csv_path = folder / f"{name}.csv"
         pq_path = folder / f"{name}.parquet"
         if csv_path.exists() and pq_path.exists():
@@ -350,7 +358,7 @@ def read_dataset(
             tables[name] = _read_csv(csv_path, columns(name), _types(name), budget)
         elif pq_path.exists():
             tables[name] = _read_parquet(pq_path, columns(name), _types(name), budget)
-        else:
+        elif name in TABLE_NAMES:
             raise FileNotFoundError(f"missing table file for {name} in {folder}")
     labels_path = folder / "labels.csv"
     labels: list[dict[str, Any]] = []

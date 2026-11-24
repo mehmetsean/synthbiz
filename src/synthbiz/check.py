@@ -1,5 +1,6 @@
 """Tie-out checks that run on generated tables."""
 
+import re
 from bisect import bisect_left
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
@@ -7,7 +8,8 @@ from datetime import date
 from typing import Any
 
 from .dates import in_close_window, last_day_of_month, previous_period
-from .schema import TABLE_NAMES, schema_dict
+from .plan import actual_by_cell
+from .schema import OPTIONAL_TABLE_NAMES, TABLE_NAMES, schema_dict
 
 MAX_MONTHS = 1200
 MAX_RECONCILING_ITEMS = 200_000
@@ -232,7 +234,8 @@ def check_bank_tie(tables: Tables) -> list[str]:
 
 def check_links(tables: Tables, labels: Labels | None = None) -> list[str]:
     errors: list[str] = []
-    schema = schema_dict()["tables"]
+    schema = schema_dict(True)["tables"]
+    names = TABLE_NAMES + [n for n in OPTIONAL_TABLE_NAMES if n in tables]
     cache: dict[tuple[str, str], set[str]] = {}
 
     def values(table: str, col: str) -> set[str]:
@@ -240,7 +243,7 @@ def check_links(tables: Tables, labels: Labels | None = None) -> list[str]:
             cache[(table, col)] = {str(r[col]) for r in tables[table]}
         return cache[(table, col)]
 
-    for name in TABLE_NAMES:
+    for name in names:
         key = schema[name]["primary_key"][0]
         for col, target in schema[name]["foreign_keys"].items():
             other, other_col = target.split(".")
@@ -261,7 +264,7 @@ def check_links(tables: Tables, labels: Labels | None = None) -> list[str]:
             )
     for lab in labels or []:
         table = str(lab["table"])
-        if table not in schema or table == "labels":
+        if table not in schema or table == "labels" or table not in tables:
             errors.append(f"labels: unknown table {_safe(table)}")
             continue
         key = schema[table]["primary_key"][0]
@@ -330,6 +333,45 @@ def check_dates(tables: Tables, labels: Labels) -> list[str]:
     return errors
 
 
+def check_budget(tables: Tables, labels: Labels) -> list[str]:
+    """Each budget line is the journal result plus its labeled change, if any."""
+    deltas: dict[str, int] = {}
+    errors: list[str] = []
+    for lab in labels:
+        if lab["table"] != "budget_lines":
+            continue
+        found = re.search(r"delta_cents=(-?[0-9]{1,18})$", str(lab["details"]))
+        if found is None:
+            errors.append(f"labels: {_safe(lab['row_id'])} has no delta_cents")
+        else:
+            deltas[str(lab["row_id"])] = int(found.group(1))
+    try:
+        actual = actual_by_cell(tables["chart_of_accounts"], tables["journal_lines"])
+    except ValueError as e:
+        return errors + [_safe(e)]
+    seen: set[tuple[str, str]] = set()
+    for r in tables["budget_lines"]:
+        cell = (str(r["period"]), str(r["account_id"]))
+        if cell in seen:
+            errors.append(
+                f"budget_lines {_safe(r['budget_id'])}: duplicate cell {cell}"
+            )
+        seen.add(cell)
+        if cell not in actual:
+            errors.append(
+                f"budget_lines {_safe(r['budget_id'])}: no journal result for "
+                f"period {_safe(cell[0])} account {_safe(cell[1])}"
+            )
+            continue
+        want = actual[cell] + deltas.get(str(r["budget_id"]), 0)
+        if int(r["amount_cents"]) != want:
+            errors.append(
+                f"budget_lines {_safe(r['budget_id'])}: amount "
+                f"{int(r['amount_cents'])} vs journal result plus label {want} cents"
+            )
+    return errors
+
+
 def run_checks(tables: Tables, labels: Labels) -> list[Result]:
     """Run every rule. Labels mark planted out-of-period entries."""
     found = [
@@ -339,4 +381,6 @@ def run_checks(tables: Tables, labels: Labels) -> list[Result]:
         ("links", check_links(tables, labels)),
         ("dates", check_dates(tables, labels)),
     ]
+    if "budget_lines" in tables:
+        found.append(("budget_ties_to_journal", check_budget(tables, labels)))
     return [Result(name, not errs, errs) for name, errs in found]
