@@ -10,7 +10,10 @@ company, a public dataset or an outside list.
   joining these words, so a generated name can match a real business by chance.
   Any match with a real business is unintended.
 - Chart of accounts, vendor categories and role IDs (for example AP_CLERK_1,
-  AP_MANAGER_1): `src/synthbiz/builder.py`. The finance tables use no person names. The workforce tables (`synthbiz workforce`) have a display_name column in staff.csv, joined from invented first and last name lists in `src/synthbiz/names.py`. Any match with a real person is unintended.
+  AP_MANAGER_1): `src/synthbiz/builder.py`. The finance tables use no person names. The
+  workforce tables (`synthbiz workforce`) have a display_name column in staff.csv, joined from
+  invented first and last name lists in `src/synthbiz/names.py`. Any match with a
+  real person is unintended.
 - US federal holidays: computed by rule in `src/synthbiz/dates.py` (for example
   third Monday of January, last Monday of May, observed on the nearest weekday when
   the date falls on a weekend). No outside calendar file is used.
