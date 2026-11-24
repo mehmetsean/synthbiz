@@ -1,4 +1,4 @@
-# synthbiz spec (v0.1 to v0.4)
+# synthbiz spec (v0.1 to v0.5)
 
 ## Problem
 People who build finance and operations analytics need test data that behaves like one company's books: linked tables that reconcile, with known problems planted in them. Real ledgers cannot be shared. Row-by-row fake-data tools such as Faker generate each row on its own, so nothing ties an invoice to a ledger posting or a payment to a bank statement. Fixed sample datasets cannot be resized or reseeded. Without labels, nobody can measure whether a duplicate-payment check or a bank match actually works.
@@ -21,10 +21,10 @@ v0.1, finance core (what ledgercheck needs first):
 - Same seed and version give byte-identical files, with a checksum manifest.
 
 v0.2, realism: legitimate unlabeled background rows, typo duplicate payments, and the approval limit in manifest.json (so rules can be scored on false alarms).
-v0.3, assets and maintenance: assets, depreciation and maintenance work orders, tied to the GL and to AP for parts (for capplan).
-v0.4, tickets and inventory: help-desk tickets linked to vendors, customers and assets (for triage-lab); inventory and purchase orders.
-Budget and cash flow option (unreleased): `--budget-and-cash-flow` adds a budget_lines table with planted, labeled variances and fixed asset, loan and equity entries for a cash flow statement. See ADR 18.
-Workforce tables (unreleased): staff, shifts, demand and availability for shift scheduling tools, as a separate `synthbiz workforce` command. See ADR 17.
+v0.3, budget, cash flow and workforce (released): budget and cash flow option: `--budget-and-cash-flow` adds a budget_lines table with planted, labeled variances and fixed asset, loan and equity entries for a cash flow statement. See ADR 18.
+v0.4, assets and maintenance: assets, depreciation and maintenance work orders, tied to the GL and to AP for parts (for capplan).
+v0.5, tickets and inventory: help-desk tickets linked to vendors, customers and assets (for triage-lab); inventory and purchase orders.
+Workforce tables: staff, shifts, demand and availability for shift scheduling tools, as a separate `synthbiz workforce` command. See ADR 17.
 
 ## Non-goals
 - No training on, or imitation of, any real company's data.
