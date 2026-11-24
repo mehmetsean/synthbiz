@@ -30,4 +30,4 @@ Options considered:
 
 `synthbiz check` does not read workforce folders. Demand and availability are generated independently, so a schedule may not be feasible. Wages, contracts and rates are made up and not real-world statistics.
 
-`synthbiz workforce --force` refuses a folder whose manifest.json is not a workforce manifest, so it never mixes with `generate` output.
+`synthbiz workforce --force` refuses a folder whose manifest.json exists and is not a workforce manifest.

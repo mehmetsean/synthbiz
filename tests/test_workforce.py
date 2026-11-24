@@ -363,7 +363,7 @@ def test_force_refuses_finance_folder(tmp_path: Path) -> None:
 def test_force_refuses_unreadable_manifest(tmp_path: Path, raw: bytes) -> None:
     (tmp_path / "manifest.json").write_bytes(raw)
     ds = generate_workforce(make())
-    msg = f"{tmp_path} holds a manifest.json from another generator"
+    msg = f"{tmp_path} holds a manifest.json that is not a workforce manifest"
     msg += ", use an empty folder"
     with pytest.raises(FileExistsError, match=re.escape(msg)):
         write_workforce(ds, tmp_path, force=True)

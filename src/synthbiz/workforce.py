@@ -232,7 +232,8 @@ def _has_finance_manifest(out: Path) -> bool:
 def write_workforce(ds: WorkforceDataset, out: Path, force: bool = False) -> None:
     if force and _has_finance_manifest(out):
         raise FileExistsError(
-            f"{out} holds a manifest.json from another generator, use an empty folder"
+            f"{out} holds a manifest.json that is not a workforce manifest, "
+            "use an empty folder"
         )
     _prepare(out, force, known_files())
     for name, cols in TABLES.items():
