@@ -48,12 +48,12 @@ DESCRIPTIONS = {
     "staff": "One row per person. skills is a list joined by |. Minutes are per week.",
     "shifts": (
         "Shift times in minutes after midnight. "
-        "crosses_midnight is 1 if the shift ends the next day."
+        "The `crosses_midnight` column is 1 if the shift ends the next day."
     ),
     "demand": "People needed per date, shift and skill. Weekends need fewer people.",
     "availability": (
-        "Per person and date. shift_id is a shift or * for the whole day. "
-        "kind is unavailable, prefer_off or prefer_on."
+        "Per person and date. The shift_id column is a shift or * for the whole day. "
+        "The kind column is unavailable, prefer_off or prefer_on."
     ),
 }
 README = """\

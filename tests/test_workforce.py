@@ -98,11 +98,9 @@ def test_demand_shares_and_weekend_factor_for_100_people() -> None:
     days = [date(2025, 6, 2), date(2025, 6, 7)]
     rows = _demand(staff, days)
     need = {(r["date"], r["shift_id"]): r["required"] for r in rows}
-    # 100 * 0.25, 0.2, 0.1
     assert need[("2025-06-02", "DAY")] == 25
     assert need[("2025-06-02", "EVE")] == 20
     assert need[("2025-06-02", "NIGHT")] == 10
-    # 0.6 of 25, 20, 10
     assert need[("2025-06-07", "DAY")] == 15
     assert need[("2025-06-07", "EVE")] == 12
     assert need[("2025-06-07", "NIGHT")] == 6

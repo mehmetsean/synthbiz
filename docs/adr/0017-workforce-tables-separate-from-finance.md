@@ -4,7 +4,7 @@ Status: Accepted
 
 ## Context
 
-A shift scheduling tool needs synthetic staff, shifts, demand and availability. synthbiz only had the finance ledger. The tool must not fork the generator, and output must be the same on every run for a given seed, so tests can check it.
+A shift scheduling tool needs synthetic staff, shifts, demand and availability. The repo only had the finance ledger. The tool must not fork the generator, and output must be the same on every run for a given seed, so tests can check it.
 
 ## Decision
 
@@ -16,7 +16,7 @@ Rules of the data:
 - Names come from `person_names` in names.py. The counts are in the README numbers block.
 - Three shifts: DAY 06:00 to 14:00, EVE 14:00 to 22:00, NIGHT 22:00 to 06:00. NIGHT has `crosses_midnight` 1. Times are minutes after midnight and end may be smaller than start.
 - Demand is a share of each skill's headcount per shift, at least 1. Weekend days use a fixed fraction of the weekday need. The shares and the fraction are in the README numbers block. Front desk has no night shift.
-- Availability has at most one row per person and date. About 4 percent unavailable, 8 percent prefer_off and 6 percent prefer_on. shift_id is a shift id or `*` for the whole day.
+- Availability has at most one row per person and date. About 4 percent unavailable, 8 percent prefer_off and 6 percent prefer_on. The `shift_id` column holds a shift id or `*` for the whole day.
 - Limits: 1 to 500 staff and 1 to 366 days. Availability rows are at most 183,000, about 33,000 measured at 500 staff and 366 days, far under the read caps of ADR 13.
 - Every run writes README.txt with the synthetic data notice and the license line, data_dictionary.md, and manifest.json with `synthetic: true`, parameters, row counts and a sha256 per file. There are no planted anomalies, so there is no labels.csv.
 
