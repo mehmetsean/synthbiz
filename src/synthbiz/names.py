@@ -80,7 +80,6 @@ def name_variant(name: str, rng: random.Random) -> str:
 
 
 def person_names(rng: random.Random, count: int) -> list[str]:
-    """Unique made-up first and last name pairs."""
     combos = [(a, b) for a in FIRST_NAMES for b in LAST_NAMES]
     if count > len(combos):
         raise ValueError("too many names requested")

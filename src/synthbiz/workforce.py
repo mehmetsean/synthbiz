@@ -1,4 +1,4 @@
-"""Generate synthetic workforce tables for shift scheduling."""
+"""Workforce tables."""
 
 import json
 import random
@@ -45,7 +45,10 @@ PREFER_ON_RATE = 0.06
 
 
 DESCRIPTIONS = {
-    "staff": "One row per person. skills is a list joined by |. Minutes are per week.",
+    "staff": (
+        "One row per person. The `skills` column is a list joined by |. "
+        "Minutes are per week."
+    ),
     "shifts": (
         "Shift times in minutes after midnight. "
         "The `crosses_midnight` column is 1 if the shift ends the next day."
@@ -68,8 +71,10 @@ Copyright (c) 2026 Mehmet Tuzunkan.
 {notice}
 
 Files:
-- staff.csv, shifts.csv, demand.csv, availability.csv, see data_dictionary.md
-- manifest.json holds the seed, parameters, row counts and a sha256 of every file
+- Tables: staff.csv, shifts.csv, demand.csv and availability.csv.
+  See data_dictionary.md.
+- The manifest.json file holds the seed, parameters, row counts and a sha256 of
+  every file.
 """
 
 
