@@ -142,7 +142,7 @@ def _demand(staff: list[dict[str, Any]], days: list[date]) -> list[dict[str, Any
                         "date": d.isoformat(),
                         "shift_id": sid,
                         "skill": skill,
-                        "required": min(need, heads[skill]),
+                        "required": need,
                     }
                 )
     return rows

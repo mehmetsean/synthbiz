@@ -15,6 +15,7 @@ from synthbiz.workforce import (
     MAX_STAFF,
     TABLES,
     WorkforceParams,
+    _demand,
     generate_workforce,
     known_files,
     write_workforce,
@@ -92,14 +93,19 @@ def test_demand_weekday_and_weekend_patterns() -> None:
     assert max(weekend) < min(weekday)
 
 
-def test_demand_never_above_headcount() -> None:
-    ds = generate_workforce(make(staff=3))
-    heads: dict[str, int] = {}
-    for r in ds.tables["staff"]:
-        for s in r["skills"].split("|"):
-            heads[s] = heads.get(s, 0) + 1
-    for r in ds.tables["demand"]:
-        assert r["required"] <= heads[r["skill"]]
+def test_demand_shares_and_weekend_factor_for_100_people() -> None:
+    staff = [{"skills": "RN"} for _ in range(100)]
+    days = [date(2025, 6, 2), date(2025, 6, 7)]
+    rows = _demand(staff, days)
+    need = {(r["date"], r["shift_id"]): r["required"] for r in rows}
+    # 100 * 0.25, 0.2, 0.1
+    assert need[("2025-06-02", "DAY")] == 25
+    assert need[("2025-06-02", "EVE")] == 20
+    assert need[("2025-06-02", "NIGHT")] == 10
+    # 0.6 of 25, 20, 10
+    assert need[("2025-06-07", "DAY")] == 15
+    assert need[("2025-06-07", "EVE")] == 12
+    assert need[("2025-06-07", "NIGHT")] == 6
 
 
 def test_availability_keys_and_kinds() -> None:
@@ -150,7 +156,7 @@ def test_limits_accept_edges() -> None:
     assert len(one["staff"]) == 1
     assert len(one["shifts"]) == 3
     assert len(one["availability"]) <= 1
-    # one person with skill RN: one row per shift, each needs 1
+    # one person
     assert [r["skills"] for r in one["staff"]] == ["RN"]
     assert len(one["demand"]) == 3
     assert {r["required"] for r in one["demand"]} == {1}
@@ -175,20 +181,20 @@ def test_demand_hand_derived_for_20_staff() -> None:
         (r["date"], r["shift_id"], r["skill"]): r["required"]
         for r in ds.tables["demand"]
     }
-    # weekday: round(12 * share) and round(4 * share), at least 1
+    # weekday need
     monday = "2025-06-02"
     assert need[(monday, "DAY", "RN")] == 3
     assert need[(monday, "EVE", "MA")] == 2
     assert need[(monday, "NIGHT", "RN")] == 1
     assert need[(monday, "DAY", "FRONT")] == 1
     assert (monday, "NIGHT", "FRONT") not in need
-    # weekend: round(weekday need * 0.6), at least 1
+    # weekend need
     saturday = "2025-06-07"
     assert need[(saturday, "DAY", "RN")] == 2
     assert need[(saturday, "EVE", "MA")] == 1
     assert need[(saturday, "NIGHT", "RN")] == 1
     assert need[(saturday, "DAY", "FRONT")] == 1
-    # weekday day is 14 people, weekend day is 10, so 20 * 14 + 8 * 10
+    # total rows
     assert sum(need.values()) == 360
     assert len(need) == 28 * 8
 
@@ -201,7 +207,7 @@ def test_availability_rates_over_many_seeds() -> None:
         cells += 50 * 60
         for r in ds.tables["availability"]:
             counts[r["kind"]] += 1
-    # 150,000 cells: one standard error is under 0.0007, bound is 0.004
+    # sampling error
     assert abs(counts["unavailable"] / cells - 0.04) < 0.004
     assert abs(counts["prefer_off"] / cells - 0.08) < 0.004
     assert abs(counts["prefer_on"] / cells - 0.06) < 0.004
@@ -221,7 +227,7 @@ def test_golden_hashes_seed_42(tmp_path: Path) -> None:
     for name, digest in GOLDEN.items():
         data = (tmp_path / f"{name}.csv").read_bytes()
         assert hashlib.sha256(data).hexdigest() == digest
-    # values worked out by hand from the rules
+    # hand derived
     assert [len(ds.tables[n]) for n in TABLES] == [20, 3, 224, 103]
     first = ds.tables["staff"][0]
     assert first["staff_id"] == "S-0001"

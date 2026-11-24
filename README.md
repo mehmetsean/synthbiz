@@ -269,7 +269,11 @@ Workforce example: seed 42, 20 staff, 28 days.
 - availability: 103
 - staff limit: 1 to 500
 - days limit: 1 to 366
+- first names: 26
+- last names: 22
 - name pairs: 572
+- demand shares: DAY 0.25, EVE 0.2, NIGHT 0.1
+- weekend factor: 0.6
 - same seed gives same bytes: PASS
 - availability rows, upper bound: 183000
 - availability rows, measured at the limits: 32935
