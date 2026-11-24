@@ -182,27 +182,75 @@ _TABLES: dict[str, dict[str, Any]] = {
     },
 }
 
+_OPTIONAL: dict[str, dict[str, Any]] = {
+    "budget_lines": {
+        "description": "Budget per period and P&L account. Made only with the budget and cash flow option. Cells named in labels.csv differ from the journal result on purpose.",
+        "primary_key": ["budget_id"],
+        "foreign_keys": {"account_id": "chart_of_accounts.account_id"},
+        "columns": [
+            ("budget_id", "string", "Budget line id."),
+            ("period", "string", "Accounting period, YYYY-MM."),
+            ("account_id", "string", "Revenue or expense account."),
+            (
+                "amount_cents",
+                "integer",
+                "Budget in cents, positive for revenue earned and expense incurred.",
+            ),
+        ],
+    },
+}
+
+_OPTIONAL_TEXT: dict[tuple[str, str], str] = {
+    (
+        "chart_of_accounts",
+        "role",
+    ): "CASH, AP_CONTROL, AR_CONTROL, FIXED_ASSET, ACCUM_DEPRECIATION, DEPRECIATION, LOAN, EQUITY_CONTRIBUTION or empty.",
+    (
+        "bank_transactions",
+        "ref_type",
+    ): "AP_PAYMENT, AR_RECEIPT, OPENING or GL_ENTRY.",
+    (
+        "bank_transactions",
+        "ref_id",
+    ): "Id of the payment or receipt it clears. For OPENING and GL_ENTRY, the journal entry id.",
+}
+
 TABLE_NAMES = list(_TABLES)
+OPTIONAL_TABLE_NAMES = list(_OPTIONAL)
+
+
+def _table(name: str) -> dict[str, Any]:
+    return _TABLES[name] if name in _TABLES else _OPTIONAL[name]
 
 
 def columns(table: str) -> list[str]:
-    return [c[0] for c in _TABLES[table]["columns"]]
+    return [c[0] for c in _table(table)["columns"]]
 
 
 def money_columns(table: str) -> list[str]:
-    cols = _TABLES[table]["columns"]
+    cols = _table(table)["columns"]
     return [n for n, ty, _ in cols if ty == "integer" and n.endswith("_cents")]
 
 
-def schema_dict() -> dict[str, Any]:
+def schema_dict(with_optional: bool = False) -> dict[str, Any]:
     tables: dict[str, Any] = {}
-    for name, t in _TABLES.items():
+    sources = dict(_TABLES)
+    if with_optional:
+        sources.update(_OPTIONAL)
+    for name, t in sources.items():
         tables[name] = {
             "description": t["description"],
             "primary_key": t["primary_key"],
             "foreign_keys": t["foreign_keys"],
             "columns": [
-                {"name": n, "type": ty, "description": d} for n, ty, d in t["columns"]
+                {
+                    "name": n,
+                    "type": ty,
+                    "description": _OPTIONAL_TEXT.get((name, n), d)
+                    if with_optional
+                    else d,
+                }
+                for n, ty, d in t["columns"]
             ],
         }
     tables["labels"] = {
