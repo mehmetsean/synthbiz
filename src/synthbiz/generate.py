@@ -10,6 +10,7 @@ from .builder import Builder, Row, nonround
 from .check import MAX_MONTHS, month_ends_from_lines, reconciling_items
 from .dates import add_business_days, business_days, month_ends, next_business_day
 from .names import company_name, customer_names, vendor_names
+from .plan import add_cash_flow_entries, plan_budget
 from .schema import TABLE_NAMES
 
 OPENING_CASH_CENTS = 100_000_000
@@ -41,6 +42,7 @@ class Params:
     anomaly_rate: float = 0.02
     start_date: date = date(2025, 1, 1)
     background: bool = True
+    budget_and_cash_flow: bool = False
 
 
 @dataclass
@@ -190,7 +192,15 @@ def generate(params: Params) -> Dataset:
     inject(b, anomaly_count)
     if params.background:
         add_background(b, size, params.months, start)
+    if params.budget_and_cash_flow:
+        add_cash_flow_entries(b, params.months, start)
     _sort(b.tables)
+    if params.budget_and_cash_flow:
+        rows, plan_labels = plan_budget(
+            b.tables["chart_of_accounts"], b.tables["journal_lines"], params.seed
+        )
+        b.tables["budget_lines"] = rows
+        b.labels.extend(plan_labels)
     ends = month_ends_from_lines(b.tables["journal_lines"])
     b.tables["reconciling_items"] = reconciling_items(b.tables, ends)
     return Dataset(params, b.tables, b.labels, anomaly_count, company, b.background)
