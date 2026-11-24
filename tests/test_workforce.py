@@ -150,8 +150,9 @@ def test_limits_accept_edges() -> None:
     assert len(one["staff"]) == 1
     assert len(one["shifts"]) == 3
     assert len(one["availability"]) <= 1
-    # one RN|MA person: DAY 1+1, EVE 1+1, NIGHT 1+1
-    assert len(one["demand"]) == 6
+    # one person with skill RN: one row per shift, each needs 1
+    assert [r["skills"] for r in one["staff"]] == ["RN"]
+    assert len(one["demand"]) == 3
     assert {r["required"] for r in one["demand"]} == {1}
     many = generate_workforce(make(staff=MAX_STAFF, days=7)).tables
     assert len(many["staff"]) == MAX_STAFF
