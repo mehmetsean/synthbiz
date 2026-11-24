@@ -13,7 +13,7 @@ A finance reporting tool needs a budget to compare with actuals, and a cash flow
 Cash flow entries:
 
 - Five chart rows with roles: FIXED_ASSET, ACCUM_DEPRECIATION, LOAN, EQUITY_CONTRIBUTION and DEPRECIATION.
-- Journal entries for equipment purchases, monthly straight line depreciation, one loan draw, monthly loan repayments and one owner contribution. The schedule is fixed code with no random draws, so it does not move the random stream. The README numbers block prints the totals for the example run.
+- Journal entries for equipment purchases, monthly straight line depreciation, one loan draw, monthly loan repayments and one owner contribution. The schedule is fixed code with no random draws, so it does not move the random stream. The README numbers block prints the totals for the example run, including the three cash flow totals and the net change in cash.
 - Each entry that moves cash has one bank line with ref_type GL_ENTRY and the entry id as ref_id. The bank date equals the posting date, so `bank_ties_to_gl_cash` needs no reconciling item for them. Depreciation moves no cash and has no bank line.
 - If a month has no business day, its entries move to the nearest business day inside the date range.
 

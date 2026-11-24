@@ -150,3 +150,53 @@ def test_force_replaces_budget_file(tmp_path: Path) -> None:
     write_dataset(DS, tmp_path)
     write_dataset(generate(Params(months=2)), tmp_path, force=True)
     assert not (tmp_path / "budget_lines.csv").exists()
+
+
+def test_missing_cell_fails() -> None:
+    t, labels = fresh()
+    dropped = t["budget_lines"][:10]
+    t["budget_lines"] = t["budget_lines"][10:]
+    labels = [
+        lab for lab in labels if lab["row_id"] not in {r["budget_id"] for r in dropped}
+    ]
+    errs = check_budget(t, labels)
+    want = [
+        f"budget_lines: no row for period {r['period']} account {r['account_id']}"
+        for r in dropped
+    ]
+    assert len(want) == 10
+    assert errs == want
+
+
+def test_duplicate_label_fails() -> None:
+    t, labels = fresh()
+    row = planted_row(labels)
+    labels.append(next(dict(lab) for lab in labels if lab["row_id"] == row))
+    assert check_budget(t, labels) == [f"labels: {row} is labeled twice"]
+
+
+def test_label_type_must_match_details() -> None:
+    t, labels = fresh()
+    for lab in labels:
+        if lab["anomaly_type"] == "budget_variance_pct":
+            lab["anomaly_type"] = "budget_variance_amount"
+            row = lab["row_id"]
+            break
+    want = f"labels: {row} type budget_variance_amount does not match its details"
+    assert want in check_budget(t, labels)
+
+
+def test_unknown_label_type_fails() -> None:
+    t, labels = fresh()
+    labels[-1]["anomaly_type"] = "other"
+    row = labels[-1]["row_id"]
+    assert f"labels: {row} has an unknown budget label type" in check_budget(t, labels)
+
+
+def test_delta_must_end_the_details() -> None:
+    t, labels = fresh()
+    row = planted_row(labels)
+    for lab in labels:
+        if lab["row_id"] == row:
+            lab["details"] += "\n"
+    assert f"labels: {row} has no delta_cents" in check_budget(t, labels)

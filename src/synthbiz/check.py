@@ -337,14 +337,30 @@ def check_budget(tables: Tables, labels: Labels) -> list[str]:
     """Budget tie."""
     deltas: dict[str, int] = {}
     errors: list[str] = []
+    words = {
+        "budget_variance_pct": "basis points",
+        "budget_variance_amount": "fixed amount",
+    }
     for lab in labels:
         if lab["table"] != "budget_lines":
             continue
-        found = re.search(r"delta_cents=(-?[0-9]{1,18})$", str(lab["details"]))
+        row_id = str(lab["row_id"])
+        if row_id in deltas:
+            errors.append(f"labels: {_safe(row_id)} is labeled twice")
+            continue
+        found = re.search(r"delta_cents=(-?[0-9]{1,18})\Z", str(lab["details"]))
         if found is None:
-            errors.append(f"labels: {_safe(lab['row_id'])} has no delta_cents")
-        else:
-            deltas[str(lab["row_id"])] = int(found.group(1))
+            errors.append(f"labels: {_safe(row_id)} has no delta_cents")
+            continue
+        word = words.get(str(lab["anomaly_type"]))
+        if word is None:
+            errors.append(f"labels: {_safe(row_id)} has an unknown budget label type")
+        elif word not in str(lab["details"]):
+            errors.append(
+                f"labels: {_safe(row_id)} type {_safe(lab['anomaly_type'])} "
+                "does not match its details"
+            )
+        deltas[row_id] = int(found.group(1))
     try:
         actual = actual_by_cell(tables["chart_of_accounts"], tables["journal_lines"])
     except ValueError as e:
@@ -369,6 +385,8 @@ def check_budget(tables: Tables, labels: Labels) -> list[str]:
                 f"budget_lines {_safe(r['budget_id'])}: amount "
                 f"{int(r['amount_cents'])} vs journal result plus label {want} cents"
             )
+    for cell in sorted(set(actual) - seen):
+        errors.append(f"budget_lines: no row for period {cell[0]} account {cell[1]}")
     return errors
 
 

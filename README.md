@@ -56,7 +56,7 @@ An option on `generate` adds a budget and the entries a cash flow statement need
 - `check` adds the rule budget_ties_to_journal when budget_lines is in the folder.
 - manifest.json sets `parameters.budget_and_cash_flow` and writes `budget_variance_count`.
 
-The loan has no interest and there are no asset disposals. The amounts are made up. See docs/adr/0018-budget-and-cash-flow-option.md. The numbers block below prints the example totals, and `tests/test_plan_generate.py` checks that the change in cash equals operating plus investing plus financing cash flow.
+The loan has no interest and there are no asset disposals. The amounts are made up. See docs/adr/0018-budget-and-cash-flow-option.md. The numbers block below prints the example totals, including operating, investing and financing cash flow and the net change in cash, and `tests/test_plan_generate.py` checks that the change in cash equals their sum.
 
 ## Demo in the browser
 
@@ -286,6 +286,11 @@ Budget and cash flow option: seed 42, 12 months, size small.
 - accumulated depreciation, cents: 5150000
 - loan balance, cents: 20000000
 - owner contributions, cents: 5000000
+- operating cash flow, cents: 73606045
+- investing cash flow, cents: -33000000
+- financing cash flow, cents: 125000000
+- net change in cash, cents: 165606045
+- cash flow identity: PASS
 - balanced_entries: PASS
 - ap_ar_subledger_ties: PASS
 - bank_ties_to_gl_cash: PASS

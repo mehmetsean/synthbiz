@@ -32,7 +32,7 @@ def _generate(args: argparse.Namespace) -> int:
     print(f"Wrote {len(ds.tables)} tables ({rows} rows) to {args.out}")
     print(f"Planted {ds.anomaly_count} anomalies, listed in labels.csv")
     if "budget_lines" in ds.tables:
-        n = len(ds.labels) - ds.anomaly_count
+        n = sum(1 for lab in ds.labels if lab["table"] == "budget_lines")
         print(f"Planted {n} budget variances, listed in labels.csv")
     return 0
 

@@ -6,10 +6,11 @@ import sys
 import tempfile
 from collections import Counter
 from pathlib import Path
+from typing import Any
 
 from synthbiz.background import BACKGROUND_KINDS
 from synthbiz.check import run_checks
-from synthbiz.generate import Params, generate
+from synthbiz.generate import Dataset, Params, generate
 from synthbiz.io import read_dataset, verify_manifest, write_dataset
 from synthbiz.names import FIRST_NAMES, LAST_NAMES
 from synthbiz.plan import BUDGET_MIN_ACTUAL_CENTS, BUDGET_VARIANCE_RATE
@@ -65,6 +66,29 @@ def build_block() -> str:
     return "\n".join(lines)
 
 
+def cash_flows(ds: Dataset) -> dict[str, int]:
+    roles = {a["account_id"]: a["role"] for a in ds.tables["chart_of_accounts"]}
+    types = {a["account_id"]: a["account_type"] for a in ds.tables["chart_of_accounts"]}
+    entries: dict[str, list[dict[str, Any]]] = {}
+    for r in ds.tables["journal_lines"]:
+        entries.setdefault(r["je_id"], []).append(r)
+    out = {"operating": 0, "investing": 0, "financing": 0}
+    for lines in entries.values():
+        cash = sum(
+            r["debit_cents"] - r["credit_cents"]
+            for r in lines
+            if roles[r["account_id"]] == "CASH"
+        )
+        other = {r["account_id"] for r in lines if roles[r["account_id"]] != "CASH"}
+        if any(roles[a] == "FIXED_ASSET" for a in other):
+            out["investing"] += cash
+        elif any(roles[a] == "LOAN" or types[a] == "EQUITY" for a in other):
+            out["financing"] += cash
+        else:
+            out["operating"] += cash
+    return out
+
+
 def plan_lines() -> list[str]:
     ds = generate(Params(seed=42, months=12, budget_and_cash_flow=True))
     with tempfile.TemporaryDirectory() as tmp:
@@ -93,6 +117,12 @@ def plan_lines() -> list[str]:
     lines.append(f"- accumulated depreciation, cents: {-held['ACCUM_DEPRECIATION']}")
     lines.append(f"- loan balance, cents: {-held['LOAN']}")
     lines.append(f"- owner contributions, cents: {-held['EQUITY_CONTRIBUTION']}")
+    flows = cash_flows(ds)
+    for name in ("operating", "investing", "financing"):
+        lines.append(f"- {name} cash flow, cents: {flows[name]}")
+    lines.append(f"- net change in cash, cents: {held['CASH']}")
+    same = sum(flows.values()) == held["CASH"]
+    lines.append(f"- cash flow identity: {'PASS' if same else 'FAIL'}")
     for r in results:
         status = "PASS" if r.ok else f"FAIL ({len(r.messages)} findings)"
         lines.append(f"- {r.rule}: {status}")
