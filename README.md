@@ -259,6 +259,20 @@ Checks:
 - manifest: PASS
 
 manifest.json sha256: 34d7be7c554ddf6d75e3087a5d944498ce008720df2746fae3ba6a2c450ffb8f
+
+Workforce example: seed 42, 20 staff, 28 days.
+
+- tables: 4
+- staff: 20
+- shifts: 3
+- demand: 224
+- availability: 103
+- staff limit: 1 to 500
+- days limit: 1 to 366
+- name pairs: 572
+- same seed gives same bytes: PASS
+- availability rows, upper bound: 183000
+- availability rows, measured at the limits: 32935
 <!-- numbers:end -->
 
 See docs/spec.md for scope, DATA.md for data sources and docs/adr/ for design decisions.

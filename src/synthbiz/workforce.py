@@ -35,7 +35,7 @@ SKILL_CYCLE = ["RN", "RN", "MA", "RN", "MA", "FRONT", "RN", "MA", "FRONT", "RN"]
 WAGE_CENTS = {"RN": (4200, 5200), "MA": (2200, 2800), "FRONT": (1900, 2400)}
 SECOND_SKILL_RATE = 0.3
 CONTRACTS = [(1920, 2400), (960, 1440), (0, 960)]
-# share of the skill headcount needed per shift
+# shift share
 WEEKDAY_SHARE = {"DAY": 0.25, "EVE": 0.2, "NIGHT": 0.1}
 WEEKEND_FACTOR = 0.6
 NO_NIGHT = {"FRONT"}

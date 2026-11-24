@@ -4,7 +4,7 @@ Status: Accepted
 
 ## Context
 
-A shift scheduling tool needs synthetic staff, shifts, demand and availability. synthbiz only had the finance ledger. The tool must not fork the generator, and the demo and benchmark need data that is the same on every run for a seed.
+A shift scheduling tool needs synthetic staff, shifts, demand and availability. synthbiz only had the finance ledger. The tool must not fork the generator, and Output must be the same on every run for a given seed, so tests can check it.
 
 ## Decision
 
@@ -17,14 +17,14 @@ Rules of the data:
 - Three shifts: DAY 06:00 to 14:00, EVE 14:00 to 22:00, NIGHT 22:00 to 06:00. NIGHT has `crosses_midnight` 1. Times are minutes after midnight and end may be smaller than start.
 - Demand is a share of each skill's headcount per shift (0.25, 0.2, 0.1), at least 1, never above the headcount. Weekend days use 0.6 of the weekday need. Front desk has no night shift.
 - Availability has at most one row per person and date. About 4 percent unavailable, 8 percent prefer_off and 6 percent prefer_on. shift_id is a shift id or `*` for the whole day.
-- Limits: 1 to 500 staff and 1 to 366 days. Rows are at most about 183,000 availability rows, far under the read caps of ADR 13.
+- Limits: 1 to 500 staff and 1 to 366 days. Availability rows are at most 183,000, about 33,000 measured at 500 staff and 366 days, far under the read caps of ADR 13.
 - Every run writes README.txt with the synthetic data notice and the license line, data_dictionary.md, and manifest.json with `synthetic: true`, parameters, row counts and a sha256 per file. There are no planted anomalies, so there is no labels.csv.
 
 Options considered:
 
 - Add the tables to `generate`. This would change every existing output file, golden checksum and the demo.
 - Fork the generator into the scheduling repo. This repeats names and manifest code and can drift.
-- A separate generator in synthbiz (chosen). The columns are the input format of the scheduling tool, so its library never imports synthbiz.
+- A separate generator in synthbiz (chosen). The columns are plain CSV, so a consumer reads the files and does not import synthbiz.
 
 ## Consequences
 

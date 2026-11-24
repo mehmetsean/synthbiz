@@ -97,7 +97,7 @@ def _prepare(out: Path, force: bool, names: list[str] | None = None) -> None:
         raise FileExistsError(
             f"{out} is not empty, use --force to replace the synthbiz files in it"
         )
-    for name in names or known_files():
+    for name in names if names is not None else known_files():
         f = out / name
         if f.is_file() or f.is_symlink():
             f.unlink()

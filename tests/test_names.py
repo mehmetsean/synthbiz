@@ -1,4 +1,5 @@
 import random
+import re
 
 import pytest
 
@@ -39,5 +40,5 @@ def test_person_names_unique_deterministic_and_capped() -> None:
     a = person_names(random.Random(4), 500)
     assert a == person_names(random.Random(4), 500)
     assert len(set(a)) == 500
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=re.escape("too many names requested")):
         person_names(random.Random(4), 573)

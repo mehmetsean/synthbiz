@@ -1,6 +1,7 @@
 import csv
 import hashlib
 import json
+import re
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -131,23 +132,100 @@ def test_start_date_is_used() -> None:
 
 
 @pytest.mark.parametrize(
-    "kw",
+    ("kw", "message"),
     [
-        {"staff": 0},
-        {"staff": MAX_STAFF + 1},
-        {"days": 0},
-        {"days": MAX_DAYS + 1},
+        ({"staff": 0}, "staff must be between 1 and 500"),
+        ({"staff": MAX_STAFF + 1}, "staff must be between 1 and 500"),
+        ({"days": 0}, "days must be between 1 and 366"),
+        ({"days": MAX_DAYS + 1}, "days must be between 1 and 366"),
     ],
 )
-def test_input_limits(kw: dict[str, int]) -> None:
-    with pytest.raises(ValueError):
+def test_input_limits(kw: dict[str, int], message: str) -> None:
+    with pytest.raises(ValueError, match=re.escape(message)):
         generate_workforce(make(**kw))
 
 
 def test_limits_accept_edges() -> None:
-    generate_workforce(make(staff=1, days=1))
-    generate_workforce(make(staff=MAX_STAFF, days=7))
-    generate_workforce(make(staff=5, days=MAX_DAYS))
+    one = generate_workforce(make(staff=1, days=1)).tables
+    assert len(one["staff"]) == 1
+    assert len(one["shifts"]) == 3
+    assert len(one["availability"]) <= 1
+    # one RN|MA person: DAY 1+1, EVE 1+1, NIGHT 1+1
+    assert len(one["demand"]) == 6
+    assert {r["required"] for r in one["demand"]} == {1}
+    many = generate_workforce(make(staff=MAX_STAFF, days=7)).tables
+    assert len(many["staff"]) == MAX_STAFF
+    assert {r["date"] for r in many["demand"]} == {
+        (date(2025, 6, 2) + timedelta(days=i)).isoformat() for i in range(7)
+    }
+    long = generate_workforce(make(staff=5, days=MAX_DAYS)).tables
+    assert len({r["date"] for r in long["demand"]}) == MAX_DAYS
+    assert len(long["staff"]) == 5
+
+
+def test_demand_hand_derived_for_20_staff() -> None:
+    ds = generate_workforce(WorkforceParams(seed=42, staff=20, days=28))
+    heads: dict[str, int] = {}
+    for r in ds.tables["staff"]:
+        for s in r["skills"].split("|"):
+            heads[s] = heads.get(s, 0) + 1
+    assert heads == {"RN": 12, "MA": 12, "FRONT": 4}
+    need = {
+        (r["date"], r["shift_id"], r["skill"]): r["required"]
+        for r in ds.tables["demand"]
+    }
+    # weekday: round(12 * share) and round(4 * share), at least 1
+    monday = "2025-06-02"
+    assert need[(monday, "DAY", "RN")] == 3
+    assert need[(monday, "EVE", "MA")] == 2
+    assert need[(monday, "NIGHT", "RN")] == 1
+    assert need[(monday, "DAY", "FRONT")] == 1
+    assert (monday, "NIGHT", "FRONT") not in need
+    # weekend: round(weekday need * 0.6), at least 1
+    saturday = "2025-06-07"
+    assert need[(saturday, "DAY", "RN")] == 2
+    assert need[(saturday, "EVE", "MA")] == 1
+    assert need[(saturday, "NIGHT", "RN")] == 1
+    assert need[(saturday, "DAY", "FRONT")] == 1
+    # weekday day is 14 people, weekend day is 10, so 20 * 14 + 8 * 10
+    assert sum(need.values()) == 360
+    assert len(need) == 28 * 8
+
+
+def test_availability_rates_over_many_seeds() -> None:
+    counts = {"unavailable": 0, "prefer_off": 0, "prefer_on": 0}
+    cells = 0
+    for seed in range(50):
+        ds = generate_workforce(WorkforceParams(seed=seed, staff=50, days=60))
+        cells += 50 * 60
+        for r in ds.tables["availability"]:
+            counts[r["kind"]] += 1
+    # 150,000 cells: one standard error is under 0.0007, bound is 0.004
+    assert abs(counts["unavailable"] / cells - 0.04) < 0.004
+    assert abs(counts["prefer_off"] / cells - 0.08) < 0.004
+    assert abs(counts["prefer_on"] / cells - 0.06) < 0.004
+
+
+GOLDEN = {
+    "staff": "072f4019b58847696d4b0f0d985b5f87bcad74873eee706ef30e3329a5c4f235",
+    "shifts": "1047928ea888e9f2609ca3975b7b7d22e73bdc2623c53db1efb01d77684f3c1b",
+    "demand": "60c6e42df06a8d576a30c2a54545f293506b1788145f117c25e7c8375a5f0ffa",
+    "availability": "d76aa2f36423686ce63904a03b249e5e5cf73023cedda81d80e43196d03e2086",
+}
+
+
+def test_golden_hashes_seed_42(tmp_path: Path) -> None:
+    ds = generate_workforce(WorkforceParams(seed=42, staff=20, days=28))
+    write_workforce(ds, tmp_path)
+    for name, digest in GOLDEN.items():
+        data = (tmp_path / f"{name}.csv").read_bytes()
+        assert hashlib.sha256(data).hexdigest() == digest
+    # values worked out by hand from the rules
+    assert [len(ds.tables[n]) for n in TABLES] == [20, 3, 224, 103]
+    first = ds.tables["staff"][0]
+    assert first["staff_id"] == "S-0001"
+    assert first["skills"] == "RN"
+    assert first["cost_cents_hour"] == 4200
 
 
 @settings(max_examples=40, deadline=None)
@@ -205,7 +283,7 @@ def test_csv_round_trip_and_bytes_are_stable(tmp_path: Path) -> None:
 def test_write_refuses_non_empty_folder(tmp_path: Path) -> None:
     (tmp_path / "x.txt").write_text("keep")
     ds = generate_workforce(make())
-    with pytest.raises(FileExistsError):
+    with pytest.raises(FileExistsError, match=re.escape("is not empty")):
         write_workforce(ds, tmp_path)
     write_workforce(ds, tmp_path, force=True)
     assert (tmp_path / "x.txt").read_text() == "keep"
@@ -219,3 +297,26 @@ def test_cli_workforce(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> No
     assert "not empty" in capsys.readouterr().out
     assert main(["workforce", "--staff", "0", "--out", str(tmp_path / "n")]) == 1
     assert "staff must be" in capsys.readouterr().out
+
+
+def test_cli_start_date_and_force(tmp_path: Path) -> None:
+    out = tmp_path / "o"
+    args = ["workforce", "--staff", "5", "--days", "3", "--out", str(out)]
+    assert main([*args, "--start-date", "2026-03-02"]) == 0
+    with (out / "demand.csv").open(newline="") as f:
+        dates = {r["date"] for r in csv.DictReader(f)}
+    assert dates == {"2026-03-02", "2026-03-03", "2026-03-04"}
+    (out / "keep.txt").write_text("keep")
+    assert main(args) == 1
+    assert main([*args, "--force"]) == 0
+    assert (out / "keep.txt").read_text() == "keep"
+    with (out / "demand.csv").open(newline="") as f:
+        assert "2025-06-02" in {r["date"] for r in csv.DictReader(f)}
+
+
+def test_cli_bad_date_is_refused(tmp_path: Path) -> None:
+    args = ["workforce", "--start-date", "02-06-2025", "--out", str(tmp_path / "o")]
+    with pytest.raises(SystemExit) as e:
+        main(args)
+    assert e.value.code == 2
+    assert not (tmp_path / "o").exists()
