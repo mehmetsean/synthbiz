@@ -369,3 +369,10 @@ def test_force_refuses_unreadable_manifest(tmp_path: Path, raw: bytes) -> None:
         write_workforce(ds, tmp_path, force=True)
     assert (tmp_path / "manifest.json").read_bytes() == raw
     assert main(["workforce", "--out", str(tmp_path), "--force"]) == 1
+
+
+def test_readme_says_names_are_invented(tmp_path: Path) -> None:
+    ds = generate_workforce(WorkforceParams(seed=1, staff=5, days=7))
+    write_workforce(ds, tmp_path)
+    text = (tmp_path / "README.txt").read_text(encoding="utf-8")
+    assert "Any match with a real person is unintended." in text

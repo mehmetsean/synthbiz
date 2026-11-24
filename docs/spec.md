@@ -49,7 +49,7 @@ All rights reserved, see LICENSE. The chart of accounts and the name word lists 
 
 ## Liability notes
 - README.txt and data_dictionary.md in every output folder say "synthetic data", and schema.json and manifest.json set "synthetic": true. CSV files keep a plain header row. `synthbiz check` reads them with Python's csv module. Company names are built from neutral word parts, and a note says any match with a real business is unintended.
-- No person names: users and approvers are role IDs such as AP_CLERK_1.
+- No person names in the finance tables: users and approvers are role IDs such as AP_CLERK_1. The workforce tables have invented display names in staff.csv, built from word lists. Any match with a real person is unintended.
 - No real bank names, routing numbers, account numbers that pass checksum rules, or tax ID patterns.
 - No claim that the data matches real-world statistics.
 - Synthetic data for testing and learning only. Any match with a real business is unintended. Decision support only, not legal, tax, accounting or assurance advice. No guarantee of compliance.
