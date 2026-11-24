@@ -272,7 +272,7 @@ Checks:
 - dates: PASS
 - manifest: PASS
 
-manifest.json sha256: 34d7be7c554ddf6d75e3087a5d944498ce008720df2746fae3ba6a2c450ffb8f
+manifest.json sha256: dacc27534d09cf8148cf056fc4dae0956b6aa6e1aad6707b1a038aabd6ac064e
 
 Budget and cash flow option: seed 42, 12 months, size small.
 
