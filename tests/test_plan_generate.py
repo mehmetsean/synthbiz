@@ -256,6 +256,19 @@ def test_cli_generate_and_check(
     assert "PASS budget_ties_to_journal" in capsys.readouterr().out
 
 
+def test_budget_rule_fails_without_labels_even_at_rate_zero(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    out = tmp_path / "d"
+    args = ["generate", "--months", "4", "--anomaly-rate", "0"]
+    assert main([*args, "--budget-and-cash-flow", "--out", str(out)]) == 0
+    capsys.readouterr()
+    (out / "labels.csv").unlink()
+    (out / "manifest.json").unlink()
+    assert main(["check", str(out)]) == 1
+    assert "FAIL budget_ties_to_journal" in capsys.readouterr().out
+
+
 def test_manifest_records_the_option(tmp_path: Path) -> None:
     import json
 
