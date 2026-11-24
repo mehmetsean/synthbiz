@@ -1,4 +1,4 @@
-"""Budget lines and fixed asset, loan and equity entries."""
+"""Budget and cash flow."""
 
 import random
 from datetime import date
@@ -22,7 +22,7 @@ def _pl_accounts(coa: list[Row]) -> list[str]:
 
 
 def actual_by_cell(coa: list[Row], lines: list[Row]) -> dict[tuple[str, str], int]:
-    """Result per (period, account) for P&L accounts, positive for normal side."""
+    """P&L result per cell."""
     types = {str(a["account_id"]): str(a["account_type"]) for a in coa}
     totals: dict[tuple[str, str], int] = {}
     for r in lines:
@@ -54,7 +54,7 @@ def _delta(rng: random.Random, kind: int, actual: int) -> tuple[str, int, str]:
 def plan_budget(
     coa: list[Row], lines: list[Row], seed: int
 ) -> tuple[list[Row], list[Row]]:
-    """Budget rows equal to the actual result, then a planted set of changed cells."""
+    """Budget with planted variances."""
     actual = actual_by_cell(coa, lines)
     cells = sorted(actual)
     ids = {cell: f"BL-{n:06d}" for n, cell in enumerate(cells, start=1)}
@@ -128,7 +128,7 @@ Event = tuple[int, str, int]
 
 
 def depreciation_for(cost: int, age: int) -> int:
-    """Straight line charge in the given month after purchase, 1 is the first."""
+    """Straight line charge."""
     if age < 1 or age > LIFE_MONTHS:
         return 0
     monthly = cost // LIFE_MONTHS
@@ -136,7 +136,7 @@ def depreciation_for(cost: int, age: int) -> int:
 
 
 def cash_schedule(months: int) -> list[Event]:
-    """Month index, kind and cents of each fixed asset, loan and equity event."""
+    """Month, kind, cents."""
     events: list[Event] = []
     for first, cost in EQUIPMENT_BUYS:
         if first < months:
@@ -161,7 +161,7 @@ def cash_schedule(months: int) -> list[Event]:
 
 
 def _posting(kind: str, cents: int) -> tuple[list[tuple[str, int, int]], str, int]:
-    """Journal lines, memo and signed bank amount for one event."""
+    """One event."""
     if kind == "EQUIPMENT_PURCHASE":
         return [(FIXED_ASSET, cents, 0), (CASH, 0, cents)], "Equipment purchase", -cents
     if kind == "LOAN_DRAW":
@@ -179,7 +179,7 @@ def _posting(kind: str, cents: int) -> tuple[list[tuple[str, int, int]], str, in
 
 
 def add_cash_flow_entries(b: Builder, months: int, start: date) -> None:
-    """Post the schedule. Cash entries clear the bank on the same day."""
+    """Post the schedule."""
     b.tables["chart_of_accounts"].extend(
         {
             "account_id": a,

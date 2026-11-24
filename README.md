@@ -45,6 +45,19 @@ A second generator writes synthetic workforce tables for shift scheduling tools.
 
 It writes staff.csv, shifts.csv, demand.csv, availability.csv, data_dictionary.md, README.txt and manifest.json. Wages are integer cents and times are integer minutes. Staff is 1 to 500 and days is 1 to 366. The same seed gives the same bytes. Every file in the set is synthetic data. See docs/adr/0017-workforce-tables-separate-from-finance.md. `synthbiz check` does not read these folders.
 
+## Budget and cash flow option
+
+An option on `generate` adds a budget and the entries a cash flow statement needs. It is off by default, and an off run is unchanged.
+
+        synthbiz generate --seed 42 --months 12 --budget-and-cash-flow --out data/
+
+- `budget_lines.csv` (budget_id, period, account_id, amount_cents) has one row per period and revenue or expense account. Each amount is the journal result for that cell, except a planted set of cells that are changed by a percent or a fixed amount. labels.csv lists them as `budget_variance_pct` or `budget_variance_amount`, and each details text ends in `delta_cents=<signed cents>`. Budget minus the journal result equals that delta for a labeled cell and 0 for every other cell.
+- Five new chart rows carry the roles FIXED_ASSET, ACCUM_DEPRECIATION, DEPRECIATION, LOAN and EQUITY_CONTRIBUTION. Entries post equipment purchases, monthly depreciation, a loan draw, monthly loan repayments and an owner contribution. Entries that move cash have a bank line with ref_type GL_ENTRY on the same date.
+- `check` adds the rule budget_ties_to_journal when budget_lines is in the folder.
+- manifest.json sets `parameters.budget_and_cash_flow` and writes `budget_variance_count`.
+
+The loan has no interest and there are no asset disposals. The amounts are made up. See docs/adr/0018-budget-and-cash-flow-option.md. The numbers block below prints the example totals, and `tests/test_plan_generate.py` checks that the change in cash equals operating plus investing plus financing cash flow.
+
 ## Demo in the browser
 
 https://mehmetsean.github.io/synthbiz/
@@ -55,7 +68,7 @@ All data stays in your browser. The page downloads Pyodide, micropip, their depe
 
 ## Tables
 
-Ten tables plus labels.csv. Keys come from `src/synthbiz/schema.py`.
+Ten tables plus labels.csv, and budget_lines when the budget and cash flow option is on. Keys come from `src/synthbiz/schema.py`.
 
 ```mermaid
 erDiagram
@@ -145,6 +158,7 @@ A label points to one row by table name and row id. The diagram draws one of the
   before the 3rd business day of its month) whose period is the previous month.
   A planted out_of_period_entry is never posted inside the close window, so the
   two cases do not overlap.
+- budget_ties_to_journal: only when budget_lines is present. Each budget line equals the journal result for its period and account plus the change named in labels.csv, and no cell is listed twice.
 - manifest: every file still has the sha256 recorded in manifest.json.
 
 A folder without labels.csv and manifest.json is read, and `check` prints a SKIP line for each missing file. The last line says how many checks were skipped, for example "All checks passed, 2 skipped". Skips do not change the exit code. If only labels.csv is removed, the manifest check fails, because manifest.json lists labels.csv.
@@ -194,7 +208,7 @@ The background step runs after the planted anomalies. Every journal, invoice, pa
 
 ## Limits
 
-- The finance generator is one fictional company with ten tables. The workforce generator is separate and has four tables.
+- The finance generator is one fictional company with ten tables, and an eleventh with the budget and cash flow option. The workforce generator is separate and has four tables.
 - Dates must be written YYYY-MM-DD. check refuses a journal that spans more than 1200 months, and it stops when the reconciling items would pass 200,000. Integer columns accept only plain digits with an optional minus sign, up to 18 digits. A Parquet file with more than 3,000,000 rows is refused from its metadata. A CSV file is stopped once it passes 3,000,000 rows. A folder may hold at most 5,000,000 rows in total.
 - Holidays are US federal holidays only.
 - No multi-currency, payroll or tax.
@@ -259,6 +273,26 @@ Checks:
 - manifest: PASS
 
 manifest.json sha256: 34d7be7c554ddf6d75e3087a5d944498ce008720df2746fae3ba6a2c450ffb8f
+
+Budget and cash flow option: seed 42, 12 months, size small.
+
+- budget_lines: 84
+- budget_variance_amount: 4
+- budget_variance_pct: 4
+- variance rate: 0.1
+- minimum result for a variance, cents: 100000
+- chart_of_accounts: 16
+- equipment at cost, cents: 33000000
+- accumulated depreciation, cents: 5150000
+- loan balance, cents: 20000000
+- owner contributions, cents: 5000000
+- balanced_entries: PASS
+- ap_ar_subledger_ties: PASS
+- bank_ties_to_gl_cash: PASS
+- links: PASS
+- dates: PASS
+- budget_ties_to_journal: PASS
+- manifest: PASS
 
 Workforce example: seed 42, 20 staff, 28 days.
 

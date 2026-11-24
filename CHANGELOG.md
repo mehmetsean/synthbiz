@@ -8,6 +8,7 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 - Workforce tables for shift scheduling: `synthbiz workforce` writes staff.csv, shifts.csv, demand.csv and availability.csv with a manifest, from `--seed`, `--staff` and `--days`. See docs/adr/0017-workforce-tables-separate-from-finance.md.
 - `names.person_names`.
+- Option `--budget-and-cash-flow` (`Params.budget_and_cash_flow`): a `budget_lines` table with planted variances listed in labels.csv, new chart rows with roles for fixed assets, depreciation, a loan and owner contributions, and entries for equipment purchases, depreciation, loan draw and repayment and an owner contribution, with same day bank lines. A new check rule `budget_ties_to_journal` runs when the table is present. Off by default, so existing output is unchanged. See docs/adr/0018-budget-and-cash-flow-option.md.
 
 ## 0.2.0 - 2026-11-17
 

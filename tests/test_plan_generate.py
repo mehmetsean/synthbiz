@@ -35,7 +35,6 @@ def account_type(ds: Dataset) -> dict[str, str]:
 
 
 def statement_flows(ds: Dataset) -> dict[str, int]:
-    """Indirect method from account types and roles, without the cash lines."""
     types = account_type(ds)
     roles = {a["account_id"]: a["role"] for a in ds.tables["chart_of_accounts"]}
     out = dict.fromkeys(["net_income", "depreciation", "working_capital"], 0)
@@ -57,7 +56,6 @@ def statement_flows(ds: Dataset) -> dict[str, int]:
 
 
 def direct_flows(ds: Dataset) -> dict[str, int]:
-    """Classify each cash line by the other accounts in its entry."""
     roles = {a["account_id"]: a["role"] for a in ds.tables["chart_of_accounts"]}
     types = account_type(ds)
     by_je: dict[str, Rows] = {}
@@ -170,6 +168,12 @@ def test_each_cash_entry_has_a_same_day_bank_line() -> None:
     assert dep.isdisjoint({b["ref_id"] for b in banks})
 
 
+def delta_of(details: str) -> int:
+    found = re.search(r"delta_cents=(-?[0-9]+)$", details)
+    assert found is not None
+    return int(found.group(1))
+
+
 def test_budget_labels_derive_from_data() -> None:
     ds = make(seed=11, months=12, size="medium")
     assert len(ds.tables["budget_lines"]) > 0
@@ -182,7 +186,7 @@ def test_budget_labels_derive_from_data() -> None:
             net = r["debit_cents"] - r["credit_cents"]
             actual[key] = actual.get(key, 0) + sign * net
     labeled = {
-        lab["row_id"]: int(re.search(r"delta_cents=(-?\d+)$", lab["details"]).group(1))  # type: ignore[union-attr]
+        lab["row_id"]: delta_of(lab["details"])
         for lab in ds.labels
         if lab["table"] == "budget_lines"
     }

@@ -334,7 +334,7 @@ def check_dates(tables: Tables, labels: Labels) -> list[str]:
 
 
 def check_budget(tables: Tables, labels: Labels) -> list[str]:
-    """Each budget line is the journal result plus its labeled change, if any."""
+    """Budget tie."""
     deltas: dict[str, int] = {}
     errors: list[str] = []
     for lab in labels:
