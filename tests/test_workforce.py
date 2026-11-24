@@ -325,3 +325,35 @@ def test_cli_bad_date_is_refused(tmp_path: Path) -> None:
         main(args)
     assert e.value.code == 2
     assert not (tmp_path / "o").exists()
+
+
+def test_start_date_overflow_message() -> None:
+    msg = "start_date plus days must stay on or before 9999-12-31"
+    with pytest.raises(ValueError, match=re.escape(msg)):
+        generate_workforce(make(start_date=date(9999, 12, 30), days=28))
+
+
+def test_last_valid_start_date() -> None:
+    ds = generate_workforce(make(start_date=date(9999, 12, 4), days=28))
+    assert max(r["date"] for r in ds.tables["demand"]) == "9999-12-31"
+    with pytest.raises(ValueError):
+        generate_workforce(make(start_date=date(9999, 12, 5), days=28))
+
+
+def test_cli_date_overflow_is_clean(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    args = ["workforce", "--start-date", "9999-12-30", "--days", "28"]
+    assert main([*args, "--out", str(tmp_path / "x")]) == 1
+    out = capsys.readouterr().out
+    assert "must stay on or before 9999-12-31" in out
+    assert "Traceback" not in out
+
+
+def test_force_refuses_finance_folder(tmp_path: Path) -> None:
+    main(["generate", "--out", str(tmp_path)])
+    before = (tmp_path / "manifest.json").read_text()
+    args = ["workforce", "--out", str(tmp_path), "--force"]
+    assert main(args) == 1
+    assert (tmp_path / "manifest.json").read_text() == before
+    assert not (tmp_path / "staff.csv").exists()

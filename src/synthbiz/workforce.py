@@ -186,6 +186,10 @@ def generate_workforce(params: WorkforceParams) -> WorkforceDataset:
     if not 1 <= params.days <= MAX_DAYS:
         raise ValueError(f"days must be between 1 and {MAX_DAYS}")
     rng = random.Random(params.seed)
+    if params.start_date > date.max - timedelta(days=params.days - 1):
+        raise ValueError(
+            f"start_date plus days must stay on or before {date.max.isoformat()}"
+        )
     days = [params.start_date + timedelta(days=i) for i in range(params.days)]
     staff = _staff(rng, params.staff)
     tables = {
@@ -214,7 +218,22 @@ def _dictionary() -> str:
     return "\n".join(lines)
 
 
+def _has_finance_manifest(out: Path) -> bool:
+    f = out / "manifest.json"
+    if not f.is_file():
+        return False
+    try:
+        data = json.loads(f.read_text("utf-8"))
+    except (ValueError, OSError):
+        return True
+    return not (isinstance(data, dict) and data.get("kind") == "workforce")
+
+
 def write_workforce(ds: WorkforceDataset, out: Path, force: bool = False) -> None:
+    if force and _has_finance_manifest(out):
+        raise FileExistsError(
+            f"{out} holds a manifest.json from another generator, use an empty folder"
+        )
     _prepare(out, force, known_files())
     for name, cols in TABLES.items():
         _write_csv(out / f"{name}.csv", cols, ds.tables[name])
