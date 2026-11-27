@@ -8,6 +8,8 @@ from synthbiz.names import (
     customer_names,
     name_variant,
     person_names,
+    phase_name,
+    task_name,
     vendor_names,
 )
 
@@ -42,3 +44,11 @@ def test_person_names_unique_deterministic_and_capped() -> None:
     assert len(set(a)) == 500
     with pytest.raises(ValueError, match=re.escape("too many names requested")):
         person_names(random.Random(4), 573)
+
+
+def test_phase_and_task_names() -> None:
+    rng = random.Random(3)
+    assert re.fullmatch(r"Phase 4: [A-Z][a-z ]+", phase_name(rng, 4))
+    for _ in range(200):
+        name = task_name(rng)
+        assert re.fullmatch(r"[A-Z][a-z]+ [a-z ]+, area ([1-9]|1[0-9]|20)", name)

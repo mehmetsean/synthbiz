@@ -2,7 +2,7 @@
 
 [![ci](https://github.com/mehmetsean/synthbiz/actions/workflows/ci.yml/badge.svg)](https://github.com/mehmetsean/synthbiz/actions/workflows/ci.yml) [![coverage](https://mehmetsean.github.io/synthbiz/badges/coverage.svg)](https://github.com/mehmetsean/synthbiz/actions/workflows/pages.yml) [![tests](https://mehmetsean.github.io/synthbiz/badges/tests.svg)](https://github.com/mehmetsean/synthbiz/actions/workflows/pages.yml)
 
-Seeded synthetic finance data for one fictional small manufacturer. The tables link to each other and reconcile, and known problems are planted and labeled.
+Seeded synthetic finance data for one fictional small manufacturer. The tables link to each other and reconcile, and known problems are planted and labeled. Separate commands write synthetic workforce tables and project schedules.
 
 The badges show the numbers from the last successful Pages build of main, so they can lag behind the latest commit. "Check the results yourself" below shows how to build them on your machine.
 
@@ -33,9 +33,11 @@ The badges show the numbers from the last successful Pages build of main, so the
 
         synthbiz check data/
 
+If standard output is closed or cannot be written, `generate`, `workforce`, `project` and `check` print nothing more and keep the exit code they would have had. `tests/test_cli_output.py` checks this.
+
 Python 3.11 or newer. Parquet output needs the extra: `pip install -e ".[parquet]"`, then add `--format parquet` to generate.
 
-`generate` stops if the output folder is not empty. Add `--force` to replace the synthbiz files in it. Other files in the folder are left alone.
+`generate` stops if the output folder is not empty. Add `--force` to replace the synthbiz files in it. Other files in the folder are left alone. `generate`, `workforce` and `project` stop before they change anything if one of their file names is taken by something other than a regular file or a link, such as a folder. A link is removed and its target is not touched. An empty folder path is refused.
 
 ## Workforce tables
 
@@ -44,6 +46,28 @@ A second generator writes synthetic workforce tables for shift scheduling tools.
         synthbiz workforce --seed 42 --staff 20 --days 28 --out workforce/
 
 It writes staff.csv, shifts.csv, demand.csv, availability.csv, data_dictionary.md, README.txt and manifest.json. Wages are integer cents and times are integer minutes. Staff is 1 to 500 and days is 1 to 366. The same seed gives the same bytes. Every file in the set is synthetic data. See docs/adr/0017-workforce-tables-separate-from-finance.md. `synthbiz check` does not read these folders.
+
+## Project schedules
+
+A third generator writes a synthetic project schedule for scheduling and schedule risk tools. It is separate from the finance and workforce tables.
+
+        synthbiz project --seed 42 --tasks 50 --start-date 2025-01-06 --out project/
+
+It writes project.xml (Microsoft Project XML, known as MSPDI), ranges.csv, risks.csv, data_dictionary.md, README.txt and manifest.json. All of it is synthetic data. The task count is 8 to 5000 and counts summary tasks and milestones. The start date is 2000-01-01 to 2099-12-31. A start date that is not a working day moves to the next one. The seed is 0 or more.
+
+- The plan has phases. Each phase is a summary task over layers of work tasks and ends in a milestone.
+- Each generated plan holds all four link types, with positive and negative lags. Negative lags are on FS links only. A lead (negative lag) is never longer than the predecessor's duration, and a link from a milestone has no lead. So a forward pass over the links, with summary tasks expanded, starts no task before the project start date. Links on summary tasks are FS or SS. A task with predecessors has at least one FS or SS predecessor. Lags are working time.
+- Links go from an earlier layer to a later one, so the network has no cycle, also with summary tasks expanded.
+- One calendar: Monday to Friday, 08:00 to 12:00 and 13:00 to 17:00, with US federal holidays as exceptions through the year in manifest.json. Juneteenth is listed from 2021. Dates after the last listed year have no holiday exceptions.
+- ranges.csv (uid, dist, min, most_likely, max, corr_group) has one row per work task. The values are percent of plan duration.
+- risks.csv (risk_id, probability, impact_dist, min_minutes, most_likely_minutes, max_minutes, min_cents, most_likely_cents, max_cents, affected_uids, corr_group) holds risk events with impacts in working minutes and in cents.
+- A corr_group name in ranges.csv or risks.csv is on at least two rows of that file. Empty means no group.
+- FixedCost and Cost in project.xml are in hundredths of the currency unit (cents). Microsoft does not state the unit on the pages named in docs/adr/0019-project-schedules.md, which also names the source used.
+- The same seed, task count, start date and version give the same bytes.
+
+`tests/test_project.py` checks the network, calendar and table rules across seeds, and `tests/test_project_files.py` checks the files, with the link type codes and lag units written out by hand. Run both with `pytest tests/test_project.py tests/test_project_files.py --no-cov`.
+
+Not in the file: Start and Finish dates, durations of summary tasks, constraints, actuals, resources, task calendars, and percent or elapsed lags. No range uses a discrete distribution. The file has not been opened in Microsoft Project. `synthbiz check` does not read these folders. `project --force` refuses a folder with another kind of manifest.json, and so does `workforce --force`; `generate --force` has no such guard and replaces manifest.json, README.txt and data_dictionary.md. See docs/adr/0019-project-schedules.md for the element names and units.
 
 ## Budget and cash flow option
 
@@ -170,7 +194,7 @@ A folder without labels.csv and manifest.json is read, and `check` prints a SKIP
 
 Without labels.csv, the dates check cannot tell a planted out_of_period_entry from a real error, so it reports those entries as FAIL and `check` exits with 1. That output points at the planted anomalies, so do not hand out the check output together with the data. A dataset made with `--anomaly-rate 0` has no planted anomalies, so it passes after both labels.csv and manifest.json are removed. A low anomaly rate does not guarantee this. With `--budget-and-cash-flow` the budget variances are always planted, whatever the anomaly rate is, so without labels.csv the rule budget_ties_to_journal fails and its output lists the planted cells.
 
-For any bad input, `check` prints one line like `Error: vendors.csv: line 4 has 3 fields, expected 4` and exits with 1. The CLI tests check that these cases print no traceback. This covers every table file and labels.csv: wrong or reordered columns, a wrong field count, a blank row in the middle, a file that is not UTF-8 or not valid CSV, an unreadable file, and a Parquet file that cannot be read. It also covers a value that is not an integer or a date, in CSV and in Parquet. CSV errors give the physical line number, as in `line 4`. Parquet errors give the row number, as in `Error: bank_transactions.parquet: row 1: amount_cents is not a valid integer`. If a check itself fails on odd data, `check` prints one line starting with `Error: could not run the checks` and exits with 1.
+For a table file or labels.csv that it cannot read, `check` prints one line like `Error: vendors.csv: line 4 has 3 fields, expected 4` and exits with 1. The CLI tests check that these cases print no traceback. This covers every table file and labels.csv: wrong or reordered columns, a wrong field count, a blank row in the middle, a file that is not UTF-8 or not valid CSV, an unreadable file, and a Parquet file that cannot be read. It also covers a value that is not an integer or a date, in CSV and in Parquet. CSV errors give the physical line number, as in `line 4`. Parquet errors give the row number, as in `Error: bank_transactions.parquet: row 1: amount_cents is not a valid integer`. If a check itself fails on odd data, `check` prints one line starting with `Error: could not run the checks` and exits with 1.
 
 ## Check the results yourself
 
@@ -213,12 +237,13 @@ The background step runs after the planted anomalies. Every journal, invoice, pa
 
 ## Limits
 
-- The finance generator is one fictional company with ten tables, and an eleventh with the budget and cash flow option. The workforce generator is separate and has four tables.
+- The finance generator is one fictional company with ten tables, and an eleventh with the budget and cash flow option. The workforce generator is separate and has four tables. The project generator is separate too.
 - Workforce demand and availability are drawn independently, so a schedule may be impossible. For example `--staff 1 --days 1` leaves one person to cover the day, evening and night shifts.
 - Dates must be written YYYY-MM-DD. check refuses a journal that spans more than 1200 months, and it stops when the reconciling items would pass 200,000. Integer columns accept only plain digits with an optional minus sign, up to 18 digits. A Parquet file with more than 3,000,000 rows is refused from its metadata. A CSV file is stopped once it passes 3,000,000 rows. A folder may hold at most 5,000,000 rows in total.
-- Holidays are US federal holidays only.
+- Holidays are US federal holidays only. The finance tables treat Juneteenth as a holiday in every year, also before 2021, the year of the law that added it (https://www.govinfo.gov/app/details/PLAW-117publ17). Project schedules list it from 2021.
 - No multi-currency, payroll or tax.
-- Amounts, timing and rates are not real-world statistics.
+- Amounts, timing and rates are not real-world statistics. This includes project durations, costs, ranges and risks.
+- Project schedules: A work task's Cost is FixedCost plus a day rate times its duration in days. The file holds no resources or assignments, so a tool that recomputes cost may get other totals.
 - Anomaly types are planted in a fixed rotation, so a low rate or a short run will
   not include all ten types. The example below has six.
 - Background rows are generated for the same fictional company only. They are one
@@ -278,7 +303,7 @@ Checks:
 - dates: PASS
 - manifest: PASS
 
-manifest.json sha256: dacc27534d09cf8148cf056fc4dae0956b6aa6e1aad6707b1a038aabd6ac064e
+manifest.json sha256: 37fcd47baaa323bec03f0578a8ef9aa2ca675fe011d76fc1829bbdcdb13edcb5
 
 Budget and cash flow option: seed 42, 12 months, size small.
 
@@ -322,6 +347,28 @@ Workforce example: seed 42, 20 staff, 28 days.
 - same seed gives same bytes: PASS
 - availability rows, upper bound: 183000
 - availability rows, measured at the limits: 32935
+
+Project example: seed 42, 50 tasks.
+
+- tasks: 50
+- summary tasks: 3
+- milestones: 3
+- links: 75
+- FS links: 65
+- SS links: 7
+- FF links: 2
+- SF links: 1
+- positive lags: 11
+- negative lags: 2
+- holiday exceptions: 43
+- holidays listed through year: 2028
+- ranges: 44
+- risks: 3
+- same seed gives same bytes: PASS
+- task limit: 8 to 5000
+- start date limit: 2000-01-01 to 2099-12-31
+- links at the task limit: 9470
+- risks at the task limit: 200
 <!-- numbers:end -->
 
 See docs/spec.md for scope, DATA.md for data sources and docs/adr/ for design decisions.

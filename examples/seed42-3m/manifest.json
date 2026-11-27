@@ -1,6 +1,6 @@
 {
   "synthetic": true,
-  "synthbiz_version": "0.3.0",
+  "synthbiz_version": "0.4.0",
   "company": "Westbrook Metalworks LLC",
   "parameters": {
     "seed": 42,
@@ -24,7 +24,7 @@
   },
   "approval_limit_cents": 500000,
   "files": {
-    "README.txt": "301699ad89b6513beba8cead921d5773f23017bd143956fa6e1226eade4aa539",
+    "README.txt": "73b2acabaa39ed05031790d1bcf660135196598a93356edf696ab464d57ebee5",
     "ap_invoices.csv": "3c5c91710ee9bce87210aabfbda6a579b88d22c5e179002b00757acb8ee19c69",
     "ap_payments.csv": "8bac989fe10f87eed567c3d6a36dcb1278b7b3495b76966bf109442e48b1bd4d",
     "ar_invoices.csv": "4fe946a38a58891f3e7e99f5bb82dc5d31248b8f3d73848296be479e4e27054e",

@@ -5,6 +5,7 @@ from synthbiz.dates import (
     business_days,
     holidays,
     is_business_day,
+    is_holiday,
     month_ends,
     next_business_day,
 )
@@ -82,3 +83,8 @@ def test_close_window_helpers() -> None:
     assert not in_close_window(date(1, 1, 5))
     assert previous_period(date(2025, 1, 2)) == "2024-12"
     assert previous_period(date(2025, 3, 5)) == "2025-02"
+
+
+def test_finance_juneteenth_in_every_year() -> None:
+    # stated limit
+    assert is_holiday(date(2020, 6, 19))

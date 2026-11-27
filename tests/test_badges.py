@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import re
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -250,3 +251,16 @@ def test_any_values_give_valid_svg(percent: float, count: int) -> None:
         assert root.get("aria-label") == f"{label}: {text}"
         least = mb.text_width(label) + mb.text_width(text) + 4 * mb.PAD
         assert int(root.get("width", "0")) >= least
+
+
+def test_deeply_nested_coverage_file(tmp_path: Path) -> None:
+    path = tmp_path / "coverage.json"
+    path.write_text("[" * 200_000 + "]" * 200_000, encoding="utf-8")
+    with pytest.raises(SystemExit, match=re.escape("cannot read coverage file")):
+        mb.read_coverage(path)
+
+
+@pytest.mark.parametrize("value", ["", "  "])
+def test_empty_output_folder(value: str) -> None:
+    with pytest.raises(SystemExit, match=re.escape("usage: make_badges.py")):
+        mb.main(["coverage.json", "junit.xml", value])
