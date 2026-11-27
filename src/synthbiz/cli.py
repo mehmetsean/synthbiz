@@ -1,6 +1,7 @@
 """Command line entry point."""
 
 import argparse
+import io
 import sys
 from datetime import date
 from pathlib import Path
@@ -17,8 +18,12 @@ MAX_SHOWN = 5
 
 def _say(text: str) -> None:
     shown = "".join(c if c.isprintable() else ascii(c)[1:-1] for c in text)
-    encoding = sys.stdout.encoding or "utf-8"
-    print(shown.encode(encoding, "backslashreplace").decode(encoding))
+    encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+    line = shown.encode(encoding, "backslashreplace").decode(encoding)
+    try:
+        print(line, flush=hasattr(sys.stdout, "flush"))
+    except (OSError, ValueError):
+        sys.stdout = io.StringIO()
 
 
 def _folder(text: str) -> str:
@@ -123,6 +128,8 @@ def _check(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    if getattr(sys.stdout, "closed", False):
+        sys.stdout = io.StringIO()
     parser = argparse.ArgumentParser(
         prog="synthbiz", description="Synthetic finance data."
     )

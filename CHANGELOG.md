@@ -20,7 +20,8 @@ All notable changes are listed here. The format follows Keep a Changelog.
 - An empty `--out` value and an empty `check` folder are refused. scripts/make_badges.py refuses an empty output folder.
 - A deeply nested manifest.json or coverage file gives a clean refusal.
 - Text files written by synthbiz use LF line ends.
-- Every command prints control characters, and characters that the output encoding cannot show, as escapes. A path outside ASCII no longer ends in a traceback on an ASCII output.
+- The messages that `generate`, `workforce`, `project` and `check` print show control characters, and characters that the output encoding cannot show, as escapes. A path outside ASCII no longer ends in a traceback on an ASCII output. Argument errors and `--help` text come from Python's argparse, and this change does not apply to them.
+- If standard output is closed or cannot be written, these four commands print nothing more and keep their exit code.
 
 ## 0.3.0 - 2026-11-24
 

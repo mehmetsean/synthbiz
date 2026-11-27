@@ -33,6 +33,8 @@ The badges show the numbers from the last successful Pages build of main, so the
 
         synthbiz check data/
 
+If standard output is closed or cannot be written, `generate`, `workforce`, `project` and `check` print nothing more and keep the exit code they would have had. `tests/test_cli_output.py` checks this.
+
 Python 3.11 or newer. Parquet output needs the extra: `pip install -e ".[parquet]"`, then add `--format parquet` to generate.
 
 `generate` stops if the output folder is not empty. Add `--force` to replace the synthbiz files in it. Other files in the folder are left alone. `generate`, `workforce` and `project` stop before they change anything if one of their file names is taken by something other than a regular file or a link, such as a folder. A link is removed and its target is not touched. An empty folder path is refused.
@@ -192,7 +194,7 @@ A folder without labels.csv and manifest.json is read, and `check` prints a SKIP
 
 Without labels.csv, the dates check cannot tell a planted out_of_period_entry from a real error, so it reports those entries as FAIL and `check` exits with 1. That output points at the planted anomalies, so do not hand out the check output together with the data. A dataset made with `--anomaly-rate 0` has no planted anomalies, so it passes after both labels.csv and manifest.json are removed. A low anomaly rate does not guarantee this. With `--budget-and-cash-flow` the budget variances are always planted, whatever the anomaly rate is, so without labels.csv the rule budget_ties_to_journal fails and its output lists the planted cells.
 
-For any bad input, `check` prints one line like `Error: vendors.csv: line 4 has 3 fields, expected 4` and exits with 1. The CLI tests check that these cases print no traceback. This covers every table file and labels.csv: wrong or reordered columns, a wrong field count, a blank row in the middle, a file that is not UTF-8 or not valid CSV, an unreadable file, and a Parquet file that cannot be read. It also covers a value that is not an integer or a date, in CSV and in Parquet. CSV errors give the physical line number, as in `line 4`. Parquet errors give the row number, as in `Error: bank_transactions.parquet: row 1: amount_cents is not a valid integer`. If a check itself fails on odd data, `check` prints one line starting with `Error: could not run the checks` and exits with 1.
+For a table file or labels.csv that it cannot read, `check` prints one line like `Error: vendors.csv: line 4 has 3 fields, expected 4` and exits with 1. The CLI tests check that these cases print no traceback. This covers every table file and labels.csv: wrong or reordered columns, a wrong field count, a blank row in the middle, a file that is not UTF-8 or not valid CSV, an unreadable file, and a Parquet file that cannot be read. It also covers a value that is not an integer or a date, in CSV and in Parquet. CSV errors give the physical line number, as in `line 4`. Parquet errors give the row number, as in `Error: bank_transactions.parquet: row 1: amount_cents is not a valid integer`. If a check itself fails on odd data, `check` prints one line starting with `Error: could not run the checks` and exits with 1.
 
 ## Check the results yourself
 
