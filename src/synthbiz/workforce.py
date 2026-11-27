@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__
-from .io import NOTICE, _prepare, _sha256, _write_csv
+from .io import NOTICE, _foreign_manifest, _prepare, _sha256, _write_csv
 from .names import person_names
 from .schema import DISCLAIMER
 
@@ -219,19 +219,8 @@ def _dictionary() -> str:
     return "\n".join(lines)
 
 
-def _has_finance_manifest(out: Path) -> bool:
-    f = out / "manifest.json"
-    if not f.is_file():
-        return False
-    try:
-        data = json.loads(f.read_text("utf-8"))
-    except (ValueError, OSError):
-        return True
-    return not (isinstance(data, dict) and data.get("kind") == "workforce")
-
-
 def write_workforce(ds: WorkforceDataset, out: Path, force: bool = False) -> None:
-    if force and _has_finance_manifest(out):
+    if force and _foreign_manifest(out, "workforce"):
         raise FileExistsError(
             f"{out} holds a manifest.json that is not a workforce manifest, "
             "use an empty folder"

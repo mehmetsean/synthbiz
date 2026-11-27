@@ -20,7 +20,7 @@ from synthbiz.project import (
 )
 
 Node = tuple[int, str]
-# pred end, successor end
+# link ends
 ENDS = {"FS": ("F", "S"), "SS": ("S", "S"), "FF": ("F", "F"), "SF": ("S", "F")}
 
 
@@ -41,7 +41,7 @@ def children(ds: ProjectDataset) -> dict[int, list[int]]:
 
 
 def event_graph(ds: ProjectDataset, links: list[Link]) -> dict[Node, dict[Node, int]]:
-    """Node to predecessors."""
+    """Predecessor map."""
     graph: dict[Node, dict[Node, int]] = {
         (t.uid, end): {} for t in ds.tasks for end in "SF"
     }
@@ -151,7 +151,7 @@ def check_calendar(ds: ProjectDataset) -> None:
     for day, name in ds.holidays:
         assert day.weekday() < 5 and day >= ds.start
         assert holidays(day.year)[day] == name
-    # every holiday through the end
+    # full horizon
     last = date(ds.holiday_end_year, 12, 31)
     listed = {day for day, _ in ds.holidays}
     working = 0
@@ -207,7 +207,7 @@ def test_largest_size() -> None:
     check_calendar(ds)
     assert len(ds.links) < 3 * 5000
     assert len(ds.risks) == 200
-    # years, not decades
+    # short horizon
     assert ds.holiday_end_year - ds.start.year < 25
 
 
@@ -223,7 +223,7 @@ def test_eight_tasks_by_hand() -> None:
     assert [r["uid"] for r in ds.ranges] == [2, 3, 6, 7]
     assert len(ds.risks) == 3
     pairs = {(x.pred_uid, x.succ_uid) for x in ds.links}
-    # chain and phase link
+    # fixed links
     assert {(2, 3), (4, 6), (6, 7), (1, 5), (7, 8)} <= pairs
 
 
@@ -233,7 +233,7 @@ def test_cycle_check_can_fail() -> None:
     back = Link(3, 2, "FS", 0)
     with pytest.raises(CycleError):
         order(event_graph(ds, [there, back]))
-    # summary to own child
+    # own child
     with pytest.raises(CycleError):
         order(event_graph(ds, [Link(1, 2, "FS", 0)]))
 

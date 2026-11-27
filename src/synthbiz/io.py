@@ -105,6 +105,17 @@ def _prepare(out: Path, force: bool, names: list[str] | None = None) -> None:
             f.unlink()
 
 
+def _foreign_manifest(out: Path, kind: str) -> bool:
+    f = out / "manifest.json"
+    if not f.is_file():
+        return False
+    try:
+        data = json.loads(f.read_text("utf-8"))
+    except (ValueError, OSError):
+        return True
+    return not (isinstance(data, dict) and data.get("kind") == kind)
+
+
 def write_dataset(
     ds: Dataset, out: Path, fmt: str = "csv", force: bool = False
 ) -> None:

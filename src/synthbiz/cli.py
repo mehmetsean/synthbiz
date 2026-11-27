@@ -7,6 +7,8 @@ from pathlib import Path
 from .check import Result, run_checks
 from .generate import SIZES, Params, generate
 from .io import FORMATS, read_dataset, verify_manifest, write_dataset
+from .project import ProjectParams, generate_project
+from .project_files import write_project
 from .workforce import WorkforceParams, generate_workforce, write_workforce
 
 MAX_SHOWN = 5
@@ -49,6 +51,21 @@ def _workforce(args: argparse.Namespace) -> int:
         return 1
     rows = sum(len(t) for t in ds.tables.values())
     print(f"Wrote {len(ds.tables)} tables ({rows} rows) to {args.out}")
+    return 0
+
+
+def _project(args: argparse.Namespace) -> int:
+    params = ProjectParams(seed=args.seed, tasks=args.tasks, start_date=args.start_date)
+    try:
+        ds = generate_project(params)
+        write_project(ds, Path(args.out), args.force)
+    except (ValueError, OSError) as e:
+        print(f"Error: {e}")
+        return 1
+    print(
+        f"Wrote a project with {len(ds.tasks)} tasks, {len(ds.links)} links "
+        f"and {len(ds.risks)} risks to {args.out}"
+    )
     return 0
 
 
@@ -134,6 +151,17 @@ def main(argv: list[str] | None = None) -> int:
         help="replace the synthbiz files in a folder that is not empty",
     )
     w.set_defaults(func=_workforce)
+    p = sub.add_parser("project", help="write a synthetic project schedule")
+    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--tasks", type=int, default=50)
+    p.add_argument("--start-date", type=date.fromisoformat, default=date(2025, 1, 6))
+    p.add_argument("--out", required=True)
+    p.add_argument(
+        "--force",
+        action="store_true",
+        help="replace the synthbiz files in a folder that is not empty",
+    )
+    p.set_defaults(func=_project)
     c = sub.add_parser("check", help="run the tie-out checks on a dataset folder")
     c.add_argument("folder")
     c.set_defaults(func=_check)

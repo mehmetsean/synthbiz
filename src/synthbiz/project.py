@@ -78,7 +78,7 @@ class ProjectDataset:
     risks: list[dict[str, Any]]
 
 
-# layers of uids
+# uid layers
 Phase = list[list[int]]
 
 
@@ -95,7 +95,7 @@ def _work_task(rng: random.Random, uid: int, wbs: str) -> Task:
 
 def _outline(rng: random.Random, count: int) -> tuple[list[Task], list[Phase]]:
     phases = max(2, min(MAX_PHASES, isqrt(count) // 2))
-    # summaries and milestones
+    # without overhead
     work = count - 2 * phases
     tasks: list[Task] = []
     plan: list[Phase] = []
@@ -135,7 +135,7 @@ def _outline(rng: random.Random, count: int) -> tuple[list[Task], list[Phase]]:
 
 
 def _work_pairs(rng: random.Random, plan: list[Phase]) -> list[tuple[int, int]]:
-    """Links into work."""
+    """Work links."""
     pairs: dict[tuple[int, int], None] = {}
     for p, layers in enumerate(plan):
         body = layers[:-1]
@@ -183,7 +183,7 @@ def _typed_links(rng: random.Random, pairs: list[tuple[int, int]]) -> list[Link]
     for i, (pred, succ) in enumerate(pairs):
         kind = forced.get(i) or rng.choices(LINK_KINDS, KIND_WEIGHTS)[0]
         lag = _lag(rng, kind)
-        # one lead, one lag
+        # guaranteed lags
         if i in forced and kind == "FS":
             lag = -DAY_MINUTES
         if i in forced and kind == "SS":
@@ -224,7 +224,7 @@ def _summary_links(rng: random.Random, plan: list[Phase]) -> list[Link]:
 
 
 def _bound_minutes(tasks: list[Task], plan: list[Phase], links: list[Link]) -> int:
-    """Longest path bound."""
+    """Path bound."""
     lag_in: dict[int, int] = {}
     for x in links:
         lag_in[x.succ_uid] = max(lag_in.get(x.succ_uid, 0), x.lag_minutes)
