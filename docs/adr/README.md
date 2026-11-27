@@ -18,3 +18,4 @@
 - [0016 Unlabeled background rows](0016-unlabeled-background-rows.md)
 - [0017 Workforce tables are a separate generator](0017-workforce-tables-separate-from-finance.md)
 - [0018 Budget lines and cash flow entries are an option](0018-budget-and-cash-flow-option.md)
+- [0019 Project schedules are a separate generator that writes MSPDI](0019-project-schedules.md)

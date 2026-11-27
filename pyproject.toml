@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "synthbiz"
-version = "0.3.0"
+version = "0.4.0"
 description = "Synthetic, reconciling finance data for one fictional small manufacturer, with labeled anomalies."
 readme = "README.md"
 requires-python = ">=3.11"

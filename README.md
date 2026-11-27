@@ -2,7 +2,7 @@
 
 [![ci](https://github.com/mehmetsean/synthbiz/actions/workflows/ci.yml/badge.svg)](https://github.com/mehmetsean/synthbiz/actions/workflows/ci.yml) [![coverage](https://mehmetsean.github.io/synthbiz/badges/coverage.svg)](https://github.com/mehmetsean/synthbiz/actions/workflows/pages.yml) [![tests](https://mehmetsean.github.io/synthbiz/badges/tests.svg)](https://github.com/mehmetsean/synthbiz/actions/workflows/pages.yml)
 
-Seeded synthetic finance data for one fictional small manufacturer. The tables link to each other and reconcile, and known problems are planted and labeled.
+Seeded synthetic finance data for one fictional small manufacturer. The tables link to each other and reconcile, and known problems are planted and labeled. Separate commands write synthetic workforce tables and project schedules.
 
 The badges show the numbers from the last successful Pages build of main, so they can lag behind the latest commit. "Check the results yourself" below shows how to build them on your machine.
 
@@ -44,6 +44,27 @@ A second generator writes synthetic workforce tables for shift scheduling tools.
         synthbiz workforce --seed 42 --staff 20 --days 28 --out workforce/
 
 It writes staff.csv, shifts.csv, demand.csv, availability.csv, data_dictionary.md, README.txt and manifest.json. Wages are integer cents and times are integer minutes. Staff is 1 to 500 and days is 1 to 366. The same seed gives the same bytes. Every file in the set is synthetic data. See docs/adr/0017-workforce-tables-separate-from-finance.md. `synthbiz check` does not read these folders.
+
+## Project schedules
+
+A third generator writes a synthetic project schedule for scheduling and schedule risk tools. It is separate from the finance and workforce tables.
+
+        synthbiz project --seed 42 --tasks 50 --start-date 2025-01-06 --out project/
+
+It writes project.xml (Microsoft Project XML, known as MSPDI), ranges.csv, risks.csv, data_dictionary.md, README.txt and manifest.json. All of it is synthetic data. The task count is 8 to 5000 and counts summary tasks and milestones. The start date is 2000-01-01 to 2099-12-31. A start date that is not a working day moves to the next one.
+
+- The plan has phases. Each phase is a summary task over layers of work tasks and ends in a milestone.
+- Links are FS, SS, FF and SF, and every file holds all four, a positive lag and a negative lag. Negative lags are on FS links only. Links on summary tasks are FS or SS. Lags are working time.
+- Links go from an earlier layer to a later one, so the network has no cycle, also with summary tasks expanded.
+- One calendar: Monday to Friday, 08:00 to 12:00 and 13:00 to 17:00, with US federal holidays as exceptions through the year in manifest.json. Later dates have no holiday exceptions.
+- ranges.csv (uid, dist, min, most_likely, max, corr_group) has one row per work task. The values are percent of plan duration.
+- risks.csv (risk_id, probability, impact_dist, min_minutes, most_likely_minutes, max_minutes, min_cents, most_likely_cents, max_cents, affected_uids, corr_group) holds risk events with impacts in working minutes and in cents.
+- FixedCost and Cost in project.xml are written in cents. docs/adr/0019-project-schedules.md names the source for that unit, which the Microsoft pages it lists do not state.
+- The same seed, task count, start date and version give the same bytes.
+
+`tests/test_project.py` checks the network, calendar and table rules across seeds, and `tests/test_project_files.py` checks the files, with the link type codes and lag units written out by hand. Run both with `pytest tests/test_project.py tests/test_project_files.py --no-cov`.
+
+Not in the file: Start and Finish dates, durations of summary tasks, constraints, actuals, resources, task calendars, and percent or elapsed lags. No range uses a discrete distribution. The tests do not open the file in Microsoft Project. `synthbiz check` does not read these folders. `project --force` refuses a folder with another kind of manifest.json, and so does `workforce --force`; `generate --force` has no such guard and replaces manifest.json, README.txt and data_dictionary.md. See docs/adr/0019-project-schedules.md for the element names and units.
 
 ## Budget and cash flow option
 
@@ -213,12 +234,12 @@ The background step runs after the planted anomalies. Every journal, invoice, pa
 
 ## Limits
 
-- The finance generator is one fictional company with ten tables, and an eleventh with the budget and cash flow option. The workforce generator is separate and has four tables.
+- The finance generator is one fictional company with ten tables, and an eleventh with the budget and cash flow option. The workforce generator is separate and has four tables. The project generator is separate too.
 - Workforce demand and availability are drawn independently, so a schedule may be impossible. For example `--staff 1 --days 1` leaves one person to cover the day, evening and night shifts.
 - Dates must be written YYYY-MM-DD. check refuses a journal that spans more than 1200 months, and it stops when the reconciling items would pass 200,000. Integer columns accept only plain digits with an optional minus sign, up to 18 digits. A Parquet file with more than 3,000,000 rows is refused from its metadata. A CSV file is stopped once it passes 3,000,000 rows. A folder may hold at most 5,000,000 rows in total.
 - Holidays are US federal holidays only.
 - No multi-currency, payroll or tax.
-- Amounts, timing and rates are not real-world statistics.
+- Amounts, timing and rates are not real-world statistics. This includes project durations, costs, ranges and risks.
 - Anomaly types are planted in a fixed rotation, so a low rate or a short run will
   not include all ten types. The example below has six.
 - Background rows are generated for the same fictional company only. They are one
@@ -278,7 +299,7 @@ Checks:
 - dates: PASS
 - manifest: PASS
 
-manifest.json sha256: dacc27534d09cf8148cf056fc4dae0956b6aa6e1aad6707b1a038aabd6ac064e
+manifest.json sha256: 37fcd47baaa323bec03f0578a8ef9aa2ca675fe011d76fc1829bbdcdb13edcb5
 
 Budget and cash flow option: seed 42, 12 months, size small.
 
@@ -322,6 +343,28 @@ Workforce example: seed 42, 20 staff, 28 days.
 - same seed gives same bytes: PASS
 - availability rows, upper bound: 183000
 - availability rows, measured at the limits: 32935
+
+Project example: seed 42, 50 tasks.
+
+- tasks: 50
+- summary tasks: 3
+- milestones: 3
+- links: 77
+- FS links: 61
+- SS links: 11
+- FF links: 4
+- SF links: 1
+- positive lags: 12
+- negative lags: 3
+- holiday exceptions: 43
+- holidays listed through year: 2028
+- ranges: 44
+- risks: 3
+- same seed gives same bytes: PASS
+- task limit: 8 to 5000
+- start date limit: 2000-01-01 to 2099-12-31
+- links at the task limit: 9499
+- risks at the task limit: 200
 <!-- numbers:end -->
 
 See docs/spec.md for scope, DATA.md for data sources and docs/adr/ for design decisions.

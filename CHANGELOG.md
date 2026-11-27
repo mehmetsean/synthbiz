@@ -2,6 +2,18 @@
 
 All notable changes are listed here. The format follows Keep a Changelog.
 
+## 0.4.0
+
+### Added
+
+- Project schedules: `synthbiz project` writes project.xml (Microsoft Project XML), ranges.csv, risks.csv and a manifest, from `--seed`, `--tasks` and `--start-date`. The plan has summary tasks, milestones, FS, SS, FF and SF links with lags, one calendar with US federal holidays and costs. Synthetic data. See docs/adr/0019-project-schedules.md.
+- `names.phase_name` and `names.task_name`.
+
+### Changed
+
+- `workforce --force` shares the manifest guard with `project --force`. Its behavior is unchanged.
+- manifest.json and README.txt in generated folders name version 0.4.0. Table files of `generate` and `workforce` are unchanged.
+
 ## 0.3.0 - 2026-11-24
 
 ### Added

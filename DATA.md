@@ -14,6 +14,8 @@ company, a public dataset or an outside list.
   workforce tables (`synthbiz workforce`) have a display_name column in staff.csv, joined from
   invented first and last name lists in `src/synthbiz/names.py`. Any match with a
   real person is unintended.
+- Phase names and task words for project schedules (`synthbiz project`):
+  `src/synthbiz/names.py`.
 - US federal holidays: computed by rule in `src/synthbiz/dates.py` (for example
   third Monday of January, last Monday of May, observed on the nearest weekday when
   the date falls on a weekend). No outside calendar file is used.

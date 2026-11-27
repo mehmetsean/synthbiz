@@ -18,6 +18,12 @@ from synthbiz.cli import main
 from synthbiz.io import NOTICE
 from synthbiz.mspdi import project_xml
 from synthbiz.project import (
+    FIRST_START,
+    LAST_START,
+    MAX_TASKS,
+    MIN_TASKS,
+    RANGE_COLUMNS,
+    RISK_COLUMNS,
     Link,
     ProjectDataset,
     ProjectParams,
@@ -445,6 +451,33 @@ def test_cli_bad_input(
     assert main(["project", *extra, "--out", str(tmp_path / "x")]) == 1
     assert capsys.readouterr().out == message + "\n"
     assert not (tmp_path / "x").exists()
+
+
+def test_check_does_not_read_project_folders(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_project(make(), tmp_path)
+    assert main(["check", str(tmp_path)]) == 1
+    want = f"Error: missing table file for chart_of_accounts in {tmp_path}\n"
+    assert capsys.readouterr().out == want
+
+
+def test_generate_force_has_no_kind_guard(tmp_path: Path) -> None:
+    write_project(make(), tmp_path)
+    args = ["generate", "--months", "1", "--out", str(tmp_path), "--force"]
+    assert main(args) == 0
+    m = json.loads((tmp_path / "manifest.json").read_text("utf-8"))
+    assert "kind" not in m
+    assert (tmp_path / "project.xml").exists()
+
+
+def test_readme_states_the_limits_and_columns() -> None:
+    readme = (Path(__file__).resolve().parent.parent / "README.md").read_text("utf-8")
+    assert f"The task count is {MIN_TASKS} to {MAX_TASKS}" in readme
+    dates = f"{FIRST_START.isoformat()} to {LAST_START.isoformat()}"
+    assert f"The start date is {dates}." in readme
+    assert f"ranges.csv ({', '.join(RANGE_COLUMNS)})" in readme
+    assert f"risks.csv ({', '.join(RISK_COLUMNS)})" in readme
 
 
 def test_cli_out_is_a_file(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

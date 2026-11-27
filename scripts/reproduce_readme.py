@@ -14,6 +14,16 @@ from synthbiz.generate import Dataset, Params, generate
 from synthbiz.io import read_dataset, verify_manifest, write_dataset
 from synthbiz.names import FIRST_NAMES, LAST_NAMES
 from synthbiz.plan import BUDGET_MIN_ACTUAL_CENTS, BUDGET_VARIANCE_RATE
+from synthbiz.project import (
+    FIRST_START,
+    LAST_START,
+    LINK_KINDS,
+    MAX_TASKS,
+    MIN_TASKS,
+    ProjectParams,
+    generate_project,
+)
+from synthbiz.project_files import write_project
 from synthbiz.workforce import (
     MAX_DAYS,
     MAX_STAFF,
@@ -63,6 +73,7 @@ def build_block() -> str:
     lines += ["", f"manifest.json sha256: {digest}"]
     lines += plan_lines()
     lines += workforce_lines()
+    lines += project_lines()
     return "\n".join(lines)
 
 
@@ -156,6 +167,39 @@ def workforce_lines() -> list[str]:
     lines.append(f"- availability rows, upper bound: {MAX_STAFF * MAX_DAYS}")
     measured = len(big.tables["availability"])
     lines.append(f"- availability rows, measured at the limits: {measured}")
+    return lines
+
+
+def project_lines() -> list[str]:
+    ds = generate_project(ProjectParams(seed=42, tasks=50))
+    big = generate_project(ProjectParams(seed=42, tasks=MAX_TASKS))
+    with tempfile.TemporaryDirectory() as tmp:
+        a, b = Path(tmp) / "a", Path(tmp) / "b"
+        write_project(ds, a)
+        write_project(generate_project(ds.params), b)
+        same = all(
+            (a / p.name).read_bytes() == (b / p.name).read_bytes() for p in a.iterdir()
+        )
+    lines = ["", "Project example: seed 42, 50 tasks.", ""]
+    lines.append(f"- tasks: {len(ds.tasks)}")
+    lines.append(f"- summary tasks: {sum(t.summary for t in ds.tasks)}")
+    lines.append(f"- milestones: {sum(t.milestone for t in ds.tasks)}")
+    kinds = Counter(x.kind for x in ds.links)
+    lines.append(f"- links: {len(ds.links)}")
+    for kind in LINK_KINDS:
+        lines.append(f"- {kind} links: {kinds[kind]}")
+    lines.append(f"- positive lags: {sum(x.lag_minutes > 0 for x in ds.links)}")
+    lines.append(f"- negative lags: {sum(x.lag_minutes < 0 for x in ds.links)}")
+    lines.append(f"- holiday exceptions: {len(ds.holidays)}")
+    lines.append(f"- holidays listed through year: {ds.holiday_end_year}")
+    lines.append(f"- ranges: {len(ds.ranges)}")
+    lines.append(f"- risks: {len(ds.risks)}")
+    lines.append(f"- same seed gives same bytes: {'PASS' if same else 'FAIL'}")
+    lines.append(f"- task limit: {MIN_TASKS} to {MAX_TASKS}")
+    first, last = FIRST_START.isoformat(), LAST_START.isoformat()
+    lines.append(f"- start date limit: {first} to {last}")
+    lines.append(f"- links at the task limit: {len(big.links)}")
+    lines.append(f"- risks at the task limit: {len(big.risks)}")
     return lines
 
 

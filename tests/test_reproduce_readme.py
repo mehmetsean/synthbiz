@@ -30,6 +30,21 @@ def test_block_is_repeatable() -> None:
     assert mod.build_block() == mod.build_block()
 
 
+def test_project_lines_by_hand() -> None:
+    lines = load().project_lines()
+    for want in (
+        "- tasks: 50",
+        "- summary tasks: 3",
+        "- milestones: 3",
+        "- ranges: 44",
+        "- risks: 3",
+        "- task limit: 8 to 5000",
+        "- risks at the task limit: 200",
+        "- same seed gives same bytes: PASS",
+    ):
+        assert want in lines
+
+
 def test_replace_block() -> None:
     mod = load()
     text = "a\n<!-- numbers:start -->\nold\n<!-- numbers:end -->\nb\n"
