@@ -3,6 +3,7 @@
 import csv
 import hashlib
 import json
+import os
 import re
 from collections import Counter
 from datetime import date
@@ -99,10 +100,14 @@ def _prepare(out: Path, force: bool, names: list[str] | None = None) -> None:
         raise FileExistsError(
             f"{out} is not empty, use --force to replace the synthbiz files in it"
         )
-    for name in names if names is not None else known_files():
-        f = out / name
-        if f.is_file() or f.is_symlink():
-            f.unlink()
+    targets = [out / n for n in (names if names is not None else known_files())]
+    for f in targets:
+        if os.path.lexists(f) and not (f.is_symlink() or f.is_file()):
+            raise FileExistsError(
+                f"{f} is not a regular file or a link, move it or use another folder"
+            )
+    for f in targets:
+        f.unlink(missing_ok=True)
 
 
 def _foreign_manifest(out: Path, kind: str) -> bool:
@@ -111,7 +116,7 @@ def _foreign_manifest(out: Path, kind: str) -> bool:
         return False
     try:
         data = json.loads(f.read_text("utf-8"))
-    except (ValueError, OSError):
+    except (ValueError, OSError, RecursionError):
         return True
     return not (isinstance(data, dict) and data.get("kind") == kind)
 
@@ -132,8 +137,12 @@ def write_dataset(
         written.append(f"{name}.{fmt}")
     _write_csv(out / "labels.csv", LABEL_COLUMNS, ds.labels)
     schema = schema_dict(plan)
-    (out / "schema.json").write_text(json.dumps(schema, indent=2) + "\n", "utf-8")
-    (out / "data_dictionary.md").write_text(data_dictionary(schema), "utf-8")
+    (out / "schema.json").write_text(
+        json.dumps(schema, indent=2) + "\n", "utf-8", newline="\n"
+    )
+    (out / "data_dictionary.md").write_text(
+        data_dictionary(schema), "utf-8", newline="\n"
+    )
     (out / "README.txt").write_text(
         README.format(
             company=ds.company,
@@ -142,6 +151,7 @@ def write_dataset(
             notice=NOTICE,
         ),
         "utf-8",
+        newline="\n",
     )
     written += ["labels.csv", "schema.json", "data_dictionary.md", "README.txt"]
     p = ds.params
@@ -170,7 +180,9 @@ def write_dataset(
         manifest["budget_variance_count"] = sum(
             1 for lab in ds.labels if lab["table"] == "budget_lines"
         )
-    (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", "utf-8")
+    (out / "manifest.json").write_text(
+        json.dumps(manifest, indent=2) + "\n", "utf-8", newline="\n"
+    )
 
 
 def _sha256(path: Path) -> str:

@@ -1,3 +1,4 @@
+import ast
 import csv
 import hashlib
 import json
@@ -6,6 +7,7 @@ import re
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
+from collections import Counter
 from datetime import date
 from pathlib import Path
 
@@ -313,12 +315,27 @@ def test_csv_headers_and_rows(tmp_path: Path) -> None:
         "risk_id,probability,impact_dist,min_minutes,most_likely_minutes,"
         "max_minutes,min_cents,most_likely_cents,max_cents,affected_uids,corr_group"
     )
+    dictionary = (tmp_path / "data_dictionary.md").read_text("utf-8")
     for name, source in (("ranges", ds.ranges), ("risks", ds.risks)):
+        section = dictionary.split(f"## {name}.csv")[1].split("\n## ")[0]
+        for column in RANGE_COLUMNS if name == "ranges" else RISK_COLUMNS:
+            assert f"`{column}`" in section
         want = [{k: str(v) for k, v in r.items()} for r in source]
         assert rows(tmp_path / f"{name}.csv") == want
-    dictionary = (tmp_path / "data_dictionary.md").read_text("utf-8")
-    for column in head.split(","):
-        assert column in dictionary
+
+
+def test_dictionary_notice_and_caveats(tmp_path: Path) -> None:
+    write_project(make(), tmp_path)
+    body = (tmp_path / "data_dictionary.md").read_text("utf-8")
+    assert f"Copyright (c) 2026 Mehmet Tuzunkan. {NOTICE}" in body.splitlines()
+    flat = " ".join(body.split())
+    for sentence in (
+        "hundredths of the currency unit (cents). Microsoft does not state the unit.",
+        "The file has not been opened in Microsoft Project.",
+        "For uniform, min and max are the bounds. most_likely is written but not used.",
+        "Juneteenth from 2021",
+    ):
+        assert sentence in flat
 
 
 def test_same_bytes_across_processes(tmp_path: Path) -> None:
@@ -334,8 +351,8 @@ def test_same_bytes_across_processes(tmp_path: Path) -> None:
 
 
 GOLDEN = {
-    "project.xml": ("1bb60b04d453fb9235323d2f2d06f430866c5d01f7644931714b983905f5c12c"),
-    "ranges.csv": ("482096987c82a21eb2a77a27e1cca2299c4b8c5107debb6621708808d9540f5f"),
+    "project.xml": ("3137523085c09df3bf7d7acec6b0bf3988485510c01895c2b4acb5675620284e"),
+    "ranges.csv": ("57c44f133b5df4f781558411b64656d86a9c3f06137d5e9390f90fc9fa4ad32a"),
     "risks.csv": ("98e616ec7e6c02411c83065b6f8380b7c7fc9b8fffae00645a22429d90b1123a"),
 }
 
@@ -363,6 +380,14 @@ def test_golden_seed_42(tmp_path: Path) -> None:
         "R-0002",
         "R-0003",
     ]
+    links = every(root, "Tasks/Task/PredecessorLink")
+    kinds = Counter(text(x, "Type") for x in links)
+    # README numbers
+    assert len(links) == 76
+    assert kinds == {"1": 65, "3": 8, "0": 2, "2": 1}
+    assert sum(int(text(x, "LinkLag")) > 0 for x in links) == 11
+    assert sum(int(text(x, "LinkLag")) < 0 for x in links) == 2
+    assert len(every(root, "Calendars/Calendar/Exceptions/Exception")) == 43
     first = every(root, "Calendars/Calendar/Exceptions/Exception")[0]
     assert text(first, "Name") == "Martin Luther King Jr. Day"
 
@@ -464,11 +489,18 @@ def test_check_does_not_read_project_folders(
 
 def test_generate_force_has_no_kind_guard(tmp_path: Path) -> None:
     write_project(make(), tmp_path)
+    names = ["README.txt", "data_dictionary.md", "manifest.json"]
+    before = {n: (tmp_path / n).read_bytes() for n in names}
+    xml = (tmp_path / "project.xml").read_bytes()
     args = ["generate", "--months", "1", "--out", str(tmp_path), "--force"]
     assert main(args) == 0
+    for name in names:
+        assert (tmp_path / name).read_bytes() != before[name]
+    assert "fictional" in (tmp_path / "README.txt").read_text("utf-8")
+    assert "## journal_lines" in (tmp_path / "data_dictionary.md").read_text("utf-8")
     m = json.loads((tmp_path / "manifest.json").read_text("utf-8"))
     assert "kind" not in m
-    assert (tmp_path / "project.xml").exists()
+    assert (tmp_path / "project.xml").read_bytes() == xml
 
 
 def test_readme_states_the_limits_and_columns() -> None:
@@ -478,6 +510,179 @@ def test_readme_states_the_limits_and_columns() -> None:
     assert f"The start date is {dates}." in readme
     assert f"ranges.csv ({', '.join(RANGE_COLUMNS)})" in readme
     assert f"risks.csv ({', '.join(RISK_COLUMNS)})" in readme
+
+
+WRITERS = {
+    "generate": (["generate", "--months", "1"], "journal_lines.csv"),
+    "workforce": (["workforce", "--days", "1"], "staff.csv"),
+    "project": (["project", "--tasks", "8"], "project.xml"),
+}
+
+
+@pytest.mark.parametrize(
+    ("writer", "others"),
+    [
+        ("generate", ["project.xml", "ranges.csv", "staff.csv"]),
+        ("workforce", ["labels.csv", "schema.json", "vendors.csv", "project.xml"]),
+        ("project", ["labels.csv", "schema.json", "vendors.csv", "staff.csv"]),
+    ],
+)
+def test_force_leaves_files_of_others(
+    tmp_path: Path, writer: str, others: list[str]
+) -> None:
+    for name in others:
+        (tmp_path / name).write_text("mine", "utf-8")
+    command = WRITERS[writer][0]
+    assert main([*command, "--out", str(tmp_path), "--force"]) == 0
+    for name in others:
+        assert (tmp_path / name).read_text("utf-8") == "mine"
+
+
+@pytest.mark.parametrize("writer", sorted(WRITERS))
+def test_force_replaces_a_link_not_its_target(tmp_path: Path, writer: str) -> None:
+    command, name = WRITERS[writer]
+    target = tmp_path / "target.txt"
+    target.write_text("mine", "utf-8")
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / name).symlink_to(target)
+    assert main([*command, "--out", str(out), "--force"]) == 0
+    assert target.read_text("utf-8") == "mine"
+    assert (out / name).is_file() and not (out / name).is_symlink()
+
+
+@pytest.mark.parametrize("kind", ["folder", "fifo"])
+@pytest.mark.parametrize("last", [False, True])
+@pytest.mark.parametrize("writer", sorted(WRITERS))
+def test_force_refuses_odd_entries_first(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    writer: str,
+    last: bool,
+    kind: str,
+) -> None:
+    command, first = WRITERS[writer]
+    name = "manifest.json" if last else first
+    kept = "README.txt"
+    (tmp_path / kept).write_text("old", "utf-8")
+    odd = tmp_path / name
+    if kind == "folder":
+        odd.mkdir()
+    else:
+        os.mkfifo(odd)
+    assert main([*command, "--out", str(tmp_path), "--force"]) == 1
+    want = f"Error: {odd} is not a regular file or a link, "
+    want += "move it or use another folder\n"
+    assert capsys.readouterr().out == want
+    assert sorted(p.name for p in tmp_path.iterdir()) == sorted([kept, name])
+    assert (tmp_path / kept).read_text("utf-8") == "old"
+
+
+@pytest.mark.parametrize("value", ["", "   "])
+@pytest.mark.parametrize("command", ["generate", "workforce", "project", "check"])
+def test_empty_folder_path_refused(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    command: str,
+    value: str,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    args = [command, value] if command == "check" else [command, "--out", value]
+    with pytest.raises(SystemExit) as e:
+        main(args)
+    assert e.value.code == 2
+    assert "the folder path must not be empty" in capsys.readouterr().err
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_cli_negative_seed(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["project", "--seed", "-1", "--out", str(tmp_path / "x")]) == 1
+    assert capsys.readouterr().out == "Error: seed must be 0 or more\n"
+    assert not (tmp_path / "x").exists()
+
+
+@pytest.mark.parametrize("writer", ["workforce", "project"])
+def test_deeply_nested_manifest_is_refused(tmp_path: Path, writer: str) -> None:
+    raw = "[" * 200_000 + "]" * 200_000
+    (tmp_path / "manifest.json").write_text(raw, "utf-8")
+    command = WRITERS[writer][0]
+    assert main([*command, "--out", str(tmp_path), "--force"]) == 1
+    assert (tmp_path / "manifest.json").read_text("utf-8") == raw
+
+
+def test_manifest_recursion_error_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def boom(text: str) -> object:
+        raise RecursionError
+
+    (tmp_path / "manifest.json").write_text("{}", "utf-8")
+    monkeypatch.setattr(json, "loads", boom)
+    msg = f"{tmp_path} holds a manifest.json that is not a project manifest"
+    with pytest.raises(FileExistsError, match=re.escape(msg)):
+        write_project(make(), tmp_path, force=True)
+
+
+def test_every_text_write_sets_the_line_end() -> None:
+    root = Path(__file__).resolve().parent.parent
+    seen = 0
+    for folder in ("src", "scripts", "benchmarks"):
+        for path in sorted((root / folder).rglob("*.py")):
+            for node in ast.walk(ast.parse(path.read_text("utf-8"))):
+                if not isinstance(node, ast.Call):
+                    continue
+                if getattr(node.func, "attr", "") != "write_text":
+                    continue
+                ends = [k.value for k in node.keywords if k.arg == "newline"]
+                assert ends, f"{path.name} line {node.lineno}"
+                assert isinstance(ends[0], ast.Constant) and ends[0].value == "\n"
+                seen += 1
+    assert seen >= 12
+
+
+BAD_CHARS = ["\x00", "\x0b", "\x1f", "\ud800", "\udfff", "\ufffe", "\uffff"]
+
+
+@pytest.mark.parametrize("bad", BAD_CHARS)
+@pytest.mark.parametrize("place", ["task", "holiday"])
+def test_xml_refuses_invalid_characters(bad: str, place: str) -> None:
+    ds = tiny()
+    if place == "task":
+        ds.tasks[1].name = f"a{bad}b"
+    else:
+        ds.holidays = [(date(2025, 1, 20), bad)]
+    msg = "Name holds a character that XML does not allow"
+    with pytest.raises(ValueError, match=re.escape(msg)):
+        project_xml(ds)
+
+
+@settings(max_examples=200, deadline=None)
+@given(name=st.text(min_size=1, max_size=8))
+def test_xml_name_is_refused_or_kept(name: str) -> None:
+    ds = tiny()
+    ds.tasks[1].name = name
+    allowed = all(
+        c in "\t\n\r"
+        or 0x20 <= ord(c) <= 0xD7FF
+        or 0xE000 <= ord(c) <= 0xFFFD
+        or ord(c) >= 0x10000
+        for c in name
+    )
+    if not allowed:
+        with pytest.raises(ValueError, match=re.escape("XML does not allow")):
+            project_xml(ds)
+        return
+    work = every(ET.fromstring(project_xml(ds)), "Tasks/Task")[1]
+    # line ends
+    assert text(work, "Name") == name.replace("\r\n", "\n").replace("\r", "\n")
+
+
+@pytest.mark.parametrize("writer", ["generate", "workforce"])
+def test_other_commands_accept_a_negative_seed(tmp_path: Path, writer: str) -> None:
+    # stated limit
+    command = WRITERS[writer][0]
+    assert main([*command, "--seed", "-1", "--out", str(tmp_path)]) == 0
 
 
 def test_cli_out_is_a_file(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

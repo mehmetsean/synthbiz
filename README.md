@@ -35,7 +35,7 @@ The badges show the numbers from the last successful Pages build of main, so the
 
 Python 3.11 or newer. Parquet output needs the extra: `pip install -e ".[parquet]"`, then add `--format parquet` to generate.
 
-`generate` stops if the output folder is not empty. Add `--force` to replace the synthbiz files in it. Other files in the folder are left alone.
+`generate` stops if the output folder is not empty. Add `--force` to replace the synthbiz files in it. Other files in the folder are left alone. `generate`, `workforce` and `project` stop before they change anything if one of their file names is taken by something other than a regular file or a link, such as a folder. A link is removed and its target is not touched. An empty folder path is refused.
 
 ## Workforce tables
 
@@ -51,20 +51,20 @@ A third generator writes a synthetic project schedule for scheduling and schedul
 
         synthbiz project --seed 42 --tasks 50 --start-date 2025-01-06 --out project/
 
-It writes project.xml (Microsoft Project XML, known as MSPDI), ranges.csv, risks.csv, data_dictionary.md, README.txt and manifest.json. All of it is synthetic data. The task count is 8 to 5000 and counts summary tasks and milestones. The start date is 2000-01-01 to 2099-12-31. A start date that is not a working day moves to the next one.
+It writes project.xml (Microsoft Project XML, known as MSPDI), ranges.csv, risks.csv, data_dictionary.md, README.txt and manifest.json. All of it is synthetic data. The task count is 8 to 5000 and counts summary tasks and milestones. The start date is 2000-01-01 to 2099-12-31. A start date that is not a working day moves to the next one. The seed is 0 or more.
 
 - The plan has phases. Each phase is a summary task over layers of work tasks and ends in a milestone.
-- Links are FS, SS, FF and SF, and every file holds all four, a positive lag and a negative lag. Negative lags are on FS links only. Links on summary tasks are FS or SS. Lags are working time.
+- Each generated plan holds all four link types, with positive and negative lags. Negative lags are on FS links only. Links on summary tasks are FS or SS. A task with predecessors has at least one FS or SS predecessor. Lags are working time.
 - Links go from an earlier layer to a later one, so the network has no cycle, also with summary tasks expanded.
-- One calendar: Monday to Friday, 08:00 to 12:00 and 13:00 to 17:00, with US federal holidays as exceptions through the year in manifest.json. Later dates have no holiday exceptions.
+- One calendar: Monday to Friday, 08:00 to 12:00 and 13:00 to 17:00, with US federal holidays as exceptions through the year in manifest.json. Juneteenth is listed from 2021. Dates after the last listed year have no holiday exceptions.
 - ranges.csv (uid, dist, min, most_likely, max, corr_group) has one row per work task. The values are percent of plan duration.
 - risks.csv (risk_id, probability, impact_dist, min_minutes, most_likely_minutes, max_minutes, min_cents, most_likely_cents, max_cents, affected_uids, corr_group) holds risk events with impacts in working minutes and in cents.
-- FixedCost and Cost in project.xml are written in cents. docs/adr/0019-project-schedules.md names the source for that unit, which the Microsoft pages it lists do not state.
+- FixedCost and Cost in project.xml are in hundredths of the currency unit (cents). Microsoft does not state the unit. docs/adr/0019-project-schedules.md names the source used.
 - The same seed, task count, start date and version give the same bytes.
 
 `tests/test_project.py` checks the network, calendar and table rules across seeds, and `tests/test_project_files.py` checks the files, with the link type codes and lag units written out by hand. Run both with `pytest tests/test_project.py tests/test_project_files.py --no-cov`.
 
-Not in the file: Start and Finish dates, durations of summary tasks, constraints, actuals, resources, task calendars, and percent or elapsed lags. No range uses a discrete distribution. The tests do not open the file in Microsoft Project. `synthbiz check` does not read these folders. `project --force` refuses a folder with another kind of manifest.json, and so does `workforce --force`; `generate --force` has no such guard and replaces manifest.json, README.txt and data_dictionary.md. See docs/adr/0019-project-schedules.md for the element names and units.
+Not in the file: Start and Finish dates, durations of summary tasks, constraints, actuals, resources, task calendars, and percent or elapsed lags. No range uses a discrete distribution. The file has not been opened in Microsoft Project. `synthbiz check` does not read these folders. `project --force` refuses a folder with another kind of manifest.json, and so does `workforce --force`; `generate --force` has no such guard and replaces manifest.json, README.txt and data_dictionary.md. See docs/adr/0019-project-schedules.md for the element names and units.
 
 ## Budget and cash flow option
 
@@ -237,7 +237,7 @@ The background step runs after the planted anomalies. Every journal, invoice, pa
 - The finance generator is one fictional company with ten tables, and an eleventh with the budget and cash flow option. The workforce generator is separate and has four tables. The project generator is separate too.
 - Workforce demand and availability are drawn independently, so a schedule may be impossible. For example `--staff 1 --days 1` leaves one person to cover the day, evening and night shifts.
 - Dates must be written YYYY-MM-DD. check refuses a journal that spans more than 1200 months, and it stops when the reconciling items would pass 200,000. Integer columns accept only plain digits with an optional minus sign, up to 18 digits. A Parquet file with more than 3,000,000 rows is refused from its metadata. A CSV file is stopped once it passes 3,000,000 rows. A folder may hold at most 5,000,000 rows in total.
-- Holidays are US federal holidays only.
+- Holidays are US federal holidays only. The finance tables treat Juneteenth as a holiday in every year, also before 2021, the year of the law that added it (https://www.govinfo.gov/app/details/PLAW-117publ17). Project schedules list it from 2021.
 - No multi-currency, payroll or tax.
 - Amounts, timing and rates are not real-world statistics. This includes project durations, costs, ranges and risks.
 - Anomaly types are planted in a fixed rotation, so a low rate or a short run will
@@ -349,13 +349,13 @@ Project example: seed 42, 50 tasks.
 - tasks: 50
 - summary tasks: 3
 - milestones: 3
-- links: 77
-- FS links: 61
-- SS links: 11
-- FF links: 4
+- links: 76
+- FS links: 65
+- SS links: 8
+- FF links: 2
 - SF links: 1
-- positive lags: 12
-- negative lags: 3
+- positive lags: 11
+- negative lags: 2
 - holiday exceptions: 43
 - holidays listed through year: 2028
 - ranges: 44
@@ -363,7 +363,7 @@ Project example: seed 42, 50 tasks.
 - same seed gives same bytes: PASS
 - task limit: 8 to 5000
 - start date limit: 2000-01-01 to 2099-12-31
-- links at the task limit: 9499
+- links at the task limit: 9453
 - risks at the task limit: 200
 <!-- numbers:end -->
 

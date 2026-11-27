@@ -14,6 +14,12 @@ from .workforce import WorkforceParams, generate_workforce, write_workforce
 MAX_SHOWN = 5
 
 
+def _folder(text: str) -> str:
+    if not text.strip():
+        raise argparse.ArgumentTypeError("the folder path must not be empty")
+    return text
+
+
 def _generate(args: argparse.Namespace) -> int:
     params = Params(
         seed=args.seed,
@@ -132,7 +138,7 @@ def main(argv: list[str] | None = None) -> int:
         help="add budget_lines and fixed asset, loan and equity entries",
     )
     g.add_argument("--format", choices=FORMATS, default="csv")
-    g.add_argument("--out", required=True)
+    g.add_argument("--out", type=_folder, required=True)
     g.add_argument(
         "--force",
         action="store_true",
@@ -144,7 +150,7 @@ def main(argv: list[str] | None = None) -> int:
     w.add_argument("--staff", type=int, default=20)
     w.add_argument("--days", type=int, default=28)
     w.add_argument("--start-date", type=date.fromisoformat, default=date(2025, 6, 2))
-    w.add_argument("--out", required=True)
+    w.add_argument("--out", type=_folder, required=True)
     w.add_argument(
         "--force",
         action="store_true",
@@ -155,7 +161,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--tasks", type=int, default=50)
     p.add_argument("--start-date", type=date.fromisoformat, default=date(2025, 1, 6))
-    p.add_argument("--out", required=True)
+    p.add_argument("--out", type=_folder, required=True)
     p.add_argument(
         "--force",
         action="store_true",
@@ -163,7 +169,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     p.set_defaults(func=_project)
     c = sub.add_parser("check", help="run the tie-out checks on a dataset folder")
-    c.add_argument("folder")
+    c.add_argument("folder", type=_folder)
     c.set_defaults(func=_check)
     args = parser.parse_args(argv)
     code: int = args.func(args)

@@ -6,13 +6,20 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ### Added
 
-- Project schedules: `synthbiz project` writes project.xml (Microsoft Project XML), ranges.csv, risks.csv and a manifest, from `--seed`, `--tasks` and `--start-date`. The plan has summary tasks, milestones, FS, SS, FF and SF links with lags, one calendar with US federal holidays and costs. Synthetic data. See docs/adr/0019-project-schedules.md.
+- Project schedules: `synthbiz project` writes project.xml (Microsoft Project XML), ranges.csv, risks.csv and a manifest, from `--seed`, `--tasks` and `--start-date`. The plan has summary tasks, milestones, FS, SS, FF and SF links with lags, one calendar with US federal holidays and costs. Synthetic data. The MSPDI layout file has not been opened in Microsoft Project. See docs/adr/0019-project-schedules.md.
 - `names.phase_name` and `names.task_name`.
 
 ### Changed
 
-- `workforce --force` shares the manifest guard with `project --force`. Its behavior is unchanged.
-- manifest.json and README.txt in generated folders name version 0.4.0. Table files of `generate` and `workforce` are unchanged.
+- `workforce --force` shares the manifest guard with `project --force`.
+- manifest.json and README.txt in generated folders name version 0.4.0. The golden hashes in tests/test_io.py (journal_lines.csv and bank_transactions.csv) and tests/test_workforce.py (the four workforce tables) did not change.
+
+### Fixed
+
+- With `--force`, `generate` and `workforce` refuse a known output name that is not a regular file or a link before they change anything.
+- An empty `--out` value and an empty `check` folder are refused. scripts/make_badges.py refuses an empty output folder.
+- A deeply nested manifest.json or coverage file gives a clean refusal.
+- Text files are written with LF line ends on every system.
 
 ## 0.3.0 - 2026-11-24
 

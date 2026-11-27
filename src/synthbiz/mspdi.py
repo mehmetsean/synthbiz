@@ -1,10 +1,11 @@
 """MSPDI writer."""
 
+import re
 import xml.etree.ElementTree as ET
 from datetime import date
 
 from .io import NOTICE
-from .project import DAY_MINUTES, Link, ProjectDataset, Task
+from .project import DAY_MINUTES, WEEKDAYS, Link, ProjectDataset, Task
 from .schema import DISCLAIMER
 
 NAMESPACE = "http://schemas.microsoft.com/project"
@@ -13,18 +14,23 @@ LINK_TYPES = {"FF": 0, "FS": 1, "SF": 2, "SS": 3}
 FORMAT_DAYS = 7
 DAILY_EXCEPTION = 1
 CALENDAR_UID = 1
-WEEKDAYS = 5
 # Sunday=1
 WORKING_DAY_TYPES = range(2, 2 + WEEKDAYS)
 WORKING_TIMES = [("08:00:00", "12:00:00"), ("13:00:00", "17:00:00")]
 
-COMMENT = f"<!-- {DISCLAIMER} Copyright (c) 2026 Mehmet Tuzunkan. {NOTICE} -->"
+COPYRIGHT = f"Copyright (c) 2026 Mehmet Tuzunkan. {NOTICE}"
+COMMENT = f"<!-- {DISCLAIMER} {COPYRIGHT} -->"
+# non-XML
+INVALID = re.compile("[^\t\n\r\x20-\ud7ff\ue000-\ufffd\U00010000-\U0010ffff]")
 
 
 def _add(parent: ET.Element, tag: str, value: object = None) -> ET.Element:
     child = ET.SubElement(parent, tag)
     if value is not None:
-        child.text = str(value)
+        text = str(value)
+        if INVALID.search(text):
+            raise ValueError(f"{tag} holds a character that XML does not allow")
+        child.text = text
     return child
 
 

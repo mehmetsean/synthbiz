@@ -5,7 +5,7 @@ from pathlib import Path
 
 from . import __version__
 from .io import NOTICE, _foreign_manifest, _prepare, _sha256, _write_csv
-from .mspdi import project_xml
+from .mspdi import COPYRIGHT, project_xml
 from .project import RANGE_COLUMNS, RISK_COLUMNS, ProjectDataset
 from .schema import DISCLAIMER
 
@@ -40,13 +40,17 @@ DICTIONARY = f"""\
 
 {DISCLAIMER}
 
+{COPYRIGHT}
+
 ## project.xml
 
 One calendar, Monday to Friday, 08:00 to 12:00 and 13:00 to 17:00, with US
-federal holidays as exceptions. Durations are working time. LinkLag is in tenths
-of a minute. Link Type is 0 for FF, 1 for FS, 2 for SF and 3 for SS. FixedCost
-and Cost are in hundredths of a dollar (cents). Summary tasks have no Duration.
-No task has a Start or Finish date.
+federal holidays as exceptions (Juneteenth from 2021). Durations are working
+time. LinkLag is in tenths of a minute. Link Type is 0 for FF, 1 for FS, 2 for
+SF and 3 for SS. FixedCost and Cost are in hundredths of the currency unit
+(cents). Microsoft does not state the unit. Summary tasks have no Duration. No
+task has a Start or Finish date. The file has not been opened in Microsoft
+Project.
 
 ## ranges.csv
 
@@ -55,7 +59,8 @@ One row per task that is not a summary task or a milestone. The columns `min`,
 project.xml.
 
 - `uid`: task UID in project.xml.
-- `dist`: triangular, pert or uniform. A uniform range uses only min and max.
+- `dist`: triangular, pert or uniform. For uniform, min and max are the bounds.
+  most_likely is written but not used.
 - `min`, `most_likely`, `max`: whole percent.
 - `corr_group`: tasks with the same group name are meant to move together. Empty
   means no group.
@@ -66,7 +71,9 @@ One row per risk event.
 
 - `risk_id`: id of the risk.
 - `probability`: chance that the event happens, between 0 and 1.
-- `impact_dist`: triangular, pert or uniform, for both impacts.
+- `impact_dist`: triangular, pert or uniform, for both impacts. For uniform, the
+  min and max columns are the bounds. The most_likely columns are written but
+  not used.
 - `min_minutes`, `most_likely_minutes`, `max_minutes`: delay in working minutes
   added to every affected task.
 - `min_cents`, `most_likely_cents`, `max_cents`: cost of the event in cents.
@@ -98,9 +105,9 @@ def write_project(ds: ProjectDataset, out: Path, force: bool = False) -> None:
     (out / "project.xml").write_bytes(project_xml(ds))
     _write_csv(out / "ranges.csv", RANGE_COLUMNS, ds.ranges)
     _write_csv(out / "risks.csv", RISK_COLUMNS, ds.risks)
-    (out / "data_dictionary.md").write_text(DICTIONARY, "utf-8")
+    (out / "data_dictionary.md").write_text(DICTIONARY, "utf-8", newline="\n")
     text = README.format(version=__version__, disclaimer=DISCLAIMER, notice=NOTICE)
-    (out / "README.txt").write_text(text, "utf-8")
+    (out / "README.txt").write_text(text, "utf-8", newline="\n")
     p = ds.params
     manifest = {
         "synthetic": True,
@@ -125,4 +132,6 @@ def write_project(ds: ProjectDataset, out: Path, force: bool = False) -> None:
         "units": UNITS,
         "files": {n: _sha256(out / n) for n in sorted(DATA_FILES)},
     }
-    (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", "utf-8")
+    (out / "manifest.json").write_text(
+        json.dumps(manifest, indent=2) + "\n", "utf-8", newline="\n"
+    )

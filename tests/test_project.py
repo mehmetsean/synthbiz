@@ -1,3 +1,4 @@
+import random
 import re
 from collections import Counter
 from datetime import date, timedelta
@@ -7,7 +8,8 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from synthbiz.dates import holidays, is_business_day
+from synthbiz import project
+from synthbiz.dates import holidays
 from synthbiz.project import (
     MAX_TASKS,
     MIN_TASKS,
@@ -62,6 +64,41 @@ def order(graph: dict[Node, dict[Node, int]]) -> list[Node]:
     return list(TopologicalSorter(graph).static_order())
 
 
+def task_graph(ds: ProjectDataset, links: list[Link]) -> dict[Node, set[Node]]:
+    """Predecessor sets."""
+    summaries = set(children(ds))
+
+    def node(uid: int, end: str) -> Node:
+        return (uid, end if uid in summaries else "T")
+
+    graph: dict[Node, set[Node]] = {
+        node(t.uid, end): set() for t in ds.tasks for end in "SF"
+    }
+    for parent, kids in children(ds).items():
+        for kid in kids:
+            graph[node(kid, "S")].add((parent, "S"))
+            graph[(parent, "F")].add(node(kid, "F"))
+    for link in links:
+        a, b = ENDS[link.kind]
+        graph[node(link.succ_uid, b)].add(node(link.pred_uid, a))
+    return graph
+
+
+def has_cycle(ds: ProjectDataset, links: list[Link]) -> bool:
+    try:
+        tuple(TopologicalSorter(task_graph(ds, links)).static_order())
+    except CycleError:
+        return True
+    return False
+
+
+def working(day: date) -> bool:
+    off = holidays(day.year).get(day)
+    if off == "Juneteenth" and day.year < 2021:
+        off = None
+    return day.weekday() < 5 and off is None
+
+
 def finish_minutes(ds: ProjectDataset) -> int:
     graph = event_graph(ds, ds.links)
     at: dict[Node, int] = {}
@@ -73,7 +110,7 @@ def finish_minutes(ds: ProjectDataset) -> int:
 def check_network(ds: ProjectDataset, tasks: int) -> None:
     by_uid = {t.uid: t for t in ds.tasks}
     assert [t.uid for t in ds.tasks] == list(range(1, tasks + 1))
-    order(event_graph(ds, ds.links))
+    assert not has_cycle(ds, ds.links)
     pairs = [(x.pred_uid, x.succ_uid) for x in ds.links]
     assert len(set(pairs)) == len(pairs)
     assert all(a != b and a in by_uid and b in by_uid for a, b in pairs)
@@ -93,6 +130,9 @@ def check_network(ds: ProjectDataset, tasks: int) -> None:
     work = [t for t in ds.tasks if not t.summary and not t.milestone]
     drives = {x.pred_uid for x in ds.links if x.kind in ("FS", "FF")}
     assert all(t.uid in drives for t in work)
+    led = {x.succ_uid for x in ds.links}
+    started = {x.succ_uid for x in ds.links if x.kind in ("FS", "SS")}
+    assert led == started
 
 
 def check_tasks(ds: ProjectDataset) -> None:
@@ -146,22 +186,24 @@ def check_tables(ds: ProjectDataset) -> None:
 
 
 def check_calendar(ds: ProjectDataset) -> None:
-    assert is_business_day(ds.start)
+    assert working(ds.start)
     assert ds.holidays == sorted(ds.holidays)
     for day, name in ds.holidays:
         assert day.weekday() < 5 and day >= ds.start
         assert holidays(day.year)[day] == name
+        assert name != "Juneteenth" or day.year >= 2021
     # full horizon
     last = date(ds.holiday_end_year, 12, 31)
     listed = {day for day, _ in ds.holidays}
-    working = 0
+    days = 0
     day = ds.start
     while day <= last:
         if day.weekday() < 5:
-            assert (day in listed) == (not is_business_day(day))
-        working += is_business_day(day)
+            assert (day in listed) == (not working(day))
+        # before spare
+        days += working(day) and day.year < ds.holiday_end_year
         day += timedelta(days=1)
-    assert working * 480 >= 2 * finish_minutes(ds)
+    assert days >= 3 * (finish_minutes(ds) // 480 + 1)
 
 
 @settings(max_examples=60, deadline=None)
@@ -227,15 +269,167 @@ def test_eight_tasks_by_hand() -> None:
     assert {(2, 3), (4, 6), (6, 7), (1, 5), (7, 8)} <= pairs
 
 
-def test_cycle_check_can_fail() -> None:
-    ds = make()
-    there = Link(2, 3, "FS", 0)
-    back = Link(3, 2, "FS", 0)
-    with pytest.raises(CycleError):
-        order(event_graph(ds, [there, back]))
-    # own child
-    with pytest.raises(CycleError):
-        order(event_graph(ds, [Link(1, 2, "FS", 0)]))
+@pytest.mark.parametrize(
+    "links",
+    [
+        [Link(2, 3, "FS", 0), Link(3, 2, "FS", 0)],
+        [Link(2, 3, "FF", 0), Link(3, 2, "SS", 0)],
+        [Link(2, 3, "SF", 0), Link(3, 2, "FF", 0)],
+        # own child
+        [Link(1, 2, "FS", 0)],
+        [Link(2, 1, "FS", 0)],
+        # summary back
+        [Link(1, 5, "FS", 0), Link(5, 1, "FS", 0)],
+        [Link(1, 5, "SS", 0), Link(5, 1, "SS", 0)],
+        [Link(1, 5, "FS", 0), Link(6, 2, "SS", 0)],
+        [Link(1, 5, "SS", 0), Link(6, 1, "FS", 0)],
+    ],
+)
+def test_cycle_check_can_fail(links: list[Link]) -> None:
+    ds = make(42, 8)
+    assert not has_cycle(ds, [])
+    assert has_cycle(ds, links)
+
+
+def layers_of(seed: int, tasks: int) -> list[list[list[int]]]:
+    # first draws
+    return project._outline(random.Random(seed), tasks)[1]
+
+
+@pytest.mark.parametrize("tasks", [8, 60, 500])
+def test_links_follow_layers_and_phases(tasks: int) -> None:
+    for seed in range(20):
+        ds = make(seed, tasks)
+        plan = layers_of(seed, tasks)
+        depth = {}
+        for n, layer in enumerate(x for layers in plan for x in layers):
+            depth.update(dict.fromkeys(layer, n))
+        for x in ds.links:
+            if x.pred_uid in depth and x.succ_uid in depth:
+                assert depth[x.pred_uid] < depth[x.succ_uid]
+        have = set(ds.links)
+        for layers in plan:
+            end = layers[-1][0]
+            for uid in layers[-2]:
+                assert Link(uid, end, "FS", 0) in have
+        pairs = {(x.pred_uid, x.succ_uid) for x in ds.links}
+        for before, after in zip(plan, plan[1:], strict=False):
+            for uid in after[0]:
+                assert (before[-1][0], uid) in pairs
+
+
+def test_summary_link_forms() -> None:
+    counts: Counter[int] = Counter()
+    for seed in range(30):
+        ds = make(seed, 500)
+        plan = layers_of(seed, 500)
+        heads = [layers[0][0] - 1 for layers in plan]
+        found = {}
+        for x in ds.links:
+            if x.pred_uid not in heads and x.succ_uid not in heads:
+                continue
+            if x.succ_uid in heads:
+                p = heads.index(x.succ_uid)
+                if x.pred_uid == heads[p - 1]:
+                    form = 0
+                else:
+                    assert x.pred_uid in plan[p - 1][0]
+                    form = 2
+            else:
+                p = heads.index(x.pred_uid) + 1
+                assert x.succ_uid in plan[p][0]
+                form = 1
+            assert p >= 1 and p not in found
+            assert form == (p - 1) % 3
+            assert x.kind in ("FS", "SS")
+            found[p] = form
+            counts[form] += 1
+        assert 1 in found
+    assert set(counts) == {0, 1, 2}
+
+
+def test_costs_and_groups_are_used() -> None:
+    ds = make(11, 500)
+    work = [t for t in ds.tasks if not t.summary and not t.milestone]
+    ends = [t for t in ds.tasks if t.milestone]
+    assert any(t.fixed_cost_cents > 0 for t in work)
+    assert any(t.fixed_cost_cents == 0 for t in work)
+    assert any(t.fixed_cost_cents > 0 for t in ends)
+    ranges = {r["corr_group"] for r in ds.ranges}
+    assert "" in ranges and len(ranges) > 2
+    risks = {r["corr_group"] for seed in range(5) for r in make(seed, 500).risks}
+    assert risks == {"", "RG1", "RG2"}
+    assert any(r["corr_group"] for r in ds.risks)
+
+
+@pytest.mark.parametrize("tasks", [8, 60, 700])
+def test_holiday_horizon_matches_the_bound(
+    monkeypatch: pytest.MonkeyPatch, tasks: int
+) -> None:
+    bounds: list[int] = []
+    real = project._calendar
+
+    def spy(start: date, minutes: int) -> tuple[int, list[tuple[date, str]]]:
+        bounds.append(minutes)
+        return real(start, minutes)
+
+    monkeypatch.setattr(project, "_calendar", spy)
+    for seed in range(10):
+        ds = make(seed, tasks)
+        assert bounds[-1] >= finish_minutes(ds)
+        needed = 3 * (bounds[-1] // 480 + 1)
+        days = []
+        day = ds.start
+        while day.year < ds.holiday_end_year:
+            days.append(day.year if working(day) else 0)
+            day += timedelta(days=1)
+        last = ds.holiday_end_year - 1
+        got = [y for y in days if y]
+        assert len(got) >= needed
+        assert last == ds.start.year or sum(y < last for y in got) < needed
+
+
+def test_path_bound_by_hand() -> None:
+    tasks = [
+        project.Task(1, "p", "1", 1, summary=True),
+        project.Task(2, "a", "1.1", 2, duration_minutes=480),
+        project.Task(3, "b", "1.2", 2, duration_minutes=960),
+        project.Task(4, "m", "1.3", 2, milestone=True),
+    ]
+    links = [
+        Link(2, 4, "FS", 240),
+        Link(3, 4, "FS", -480),
+        Link(2, 3, "SS", 720),
+        Link(2, 1, "FS", 100),
+    ]
+    # hand sum
+    assert project._bound_minutes(tasks, [[[2, 3], [4]]], links) == 2020
+
+
+def test_calendar_year_by_hand() -> None:
+    # 250 days
+    start = date(2025, 1, 2)
+    assert project._calendar(start, 82 * 480)[0] == 2026
+    assert project._calendar(start, 83 * 480)[0] == 2027
+
+
+def test_juneteenth_from_2021() -> None:
+    old = generate_project(ProjectParams(1, 8, date(2020, 6, 19)))
+    assert old.start == date(2020, 6, 19)
+    assert (date(2020, 6, 19), "Juneteenth") not in old.holidays
+    assert (date(2021, 6, 18), "Juneteenth") in old.holidays
+    new = generate_project(ProjectParams(1, 8, date(2021, 6, 18)))
+    assert new.start == date(2021, 6, 21)
+
+
+@pytest.mark.parametrize("seed", [-1, -42])
+def test_negative_seed_refused(seed: int) -> None:
+    with pytest.raises(ValueError, match=re.escape("seed must be 0 or more")):
+        generate_project(ProjectParams(seed, 8))
+
+
+def test_seed_zero() -> None:
+    assert generate_project(ProjectParams(0, 8)).tasks
 
 
 def test_other_seed_other_content() -> None:
@@ -284,3 +478,4 @@ def test_start_date_edges() -> None:
     for start in (date(2000, 1, 1), date(2099, 12, 31)):
         ds = generate_project(ProjectParams(1, MAX_TASKS, start))
         assert ds.start >= start
+        check_calendar(ds)

@@ -2,11 +2,11 @@
 
 import random
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from math import isqrt
 from typing import Any
 
-from .dates import business_days, holidays, next_business_day
+from .dates import holidays
 from .names import phase_name, task_name
 
 MIN_TASKS = 8
@@ -14,10 +14,14 @@ MAX_TASKS = 5000
 FIRST_START = date(2000, 1, 1)
 LAST_START = date(2099, 12, 31)
 DAY_MINUTES = 480
+WEEKDAYS = 5
 HALF_DAY = 240
 MAX_PHASES = 10
 LINK_KINDS = ("FS", "SS", "FF", "SF")
 KIND_WEIGHTS = (70, 15, 10, 5)
+# FS, SS
+START_KINDS = 2
+FIRST_JUNETEENTH = 2021
 DISTS = ("triangular", "pert", "uniform")
 # calendar margin
 HORIZON_FACTOR = 3
@@ -153,8 +157,8 @@ def _work_pairs(rng: random.Random, plan: list[Phase]) -> list[tuple[int, int]]:
                     pairs[(rng.choice(earlier), uid)] = None
     flat = [(n, uid) for n, layer in enumerate(_all_layers(plan)) for uid in layer]
     ends = {layers[-1][0] for layers in plan}
-    # small networks
-    while len(pairs) < len(LINK_KINDS):
+    # spare links
+    while len(pairs) - len({succ for _, succ in pairs}) < 2:
         (a, pred), (b, succ) = rng.sample(flat, 2)
         if a < b and succ not in ends:
             pairs[(pred, succ)] = None
@@ -175,13 +179,21 @@ def _lag(rng: random.Random, kind: str) -> int:
 
 
 def _typed_links(rng: random.Random, pairs: list[tuple[int, int]]) -> list[Link]:
-    first = list(LINK_KINDS)
-    rng.shuffle(first)
-    picks = rng.sample(range(len(pairs)), len(first))
-    forced = dict(zip(picks, first, strict=True))
+    seen: set[int] = set()
+    extra = []
+    for i, (_, succ) in enumerate(pairs):
+        if succ in seen:
+            extra.append(i)
+        seen.add(succ)
+    forced = dict(zip(rng.sample(extra, 2), ("FF", "SF"), strict=True))
+    rest = [i for i in range(len(pairs)) if i not in forced]
+    forced.update(zip(rng.sample(rest, 2), ("FS", "SS"), strict=True))
+    spare = set(extra)
     links = []
     for i, (pred, succ) in enumerate(pairs):
-        kind = forced.get(i) or rng.choices(LINK_KINDS, KIND_WEIGHTS)[0]
+        # first link
+        size = len(LINK_KINDS) if i in spare else START_KINDS
+        kind = forced.get(i) or rng.choices(LINK_KINDS[:size], KIND_WEIGHTS[:size])[0]
         lag = _lag(rng, kind)
         # guaranteed lags
         if i in forced and kind == "FS":
@@ -238,19 +250,47 @@ def _bound_minutes(tasks: list[Task], plan: list[Phase], links: list[Link]) -> i
     return total
 
 
+def _holidays(year: int) -> dict[date, str]:
+    return {
+        d: name
+        for d, name in holidays(year).items()
+        if name != "Juneteenth" or year >= FIRST_JUNETEENTH
+    }
+
+
+def _is_working(d: date) -> bool:
+    return d.weekday() < WEEKDAYS and d not in _holidays(d.year)
+
+
+def _next_working(d: date) -> date:
+    while not _is_working(d):
+        d += timedelta(days=1)
+    return d
+
+
+def _working_days(first: date, year: int) -> int:
+    off = _holidays(year)
+    count = 0
+    d = first
+    while d <= date(year, 12, 31):
+        count += d.weekday() < WEEKDAYS and d not in off
+        d += timedelta(days=1)
+    return count
+
+
 def _calendar(start: date, minutes: int) -> tuple[int, list[tuple[date, str]]]:
     needed = HORIZON_FACTOR * (minutes // DAY_MINUTES + 1)
     year = start.year
-    have = len(business_days(start, date(year, 12, 31)))
+    have = _working_days(start, year)
     while have < needed:
         year += 1
-        have += len(business_days(date(year, 1, 1), date(year, 12, 31)))
+        have += _working_days(date(year, 1, 1), year)
     # spare year
     year += 1
     days = [
         (d, name)
         for y in range(start.year, year + 1)
-        for d, name in holidays(y).items()
+        for d, name in _holidays(y).items()
         if d >= start
     ]
     return year, days
@@ -296,6 +336,8 @@ def _risks(rng: random.Random, work: list[int], count: int) -> list[dict[str, An
 
 
 def generate_project(params: ProjectParams) -> ProjectDataset:
+    if params.seed < 0:
+        raise ValueError("seed must be 0 or more")
     if not MIN_TASKS <= params.tasks <= MAX_TASKS:
         raise ValueError(f"tasks must be between {MIN_TASKS} and {MAX_TASKS}")
     if not FIRST_START <= params.start_date <= LAST_START:
@@ -309,7 +351,7 @@ def generate_project(params: ProjectParams) -> ProjectDataset:
     links += _milestone_links(plan, links)
     links += _summary_links(rng, plan)
     links.sort(key=lambda x: (x.succ_uid, x.pred_uid))
-    start = next_business_day(params.start_date)
+    start = _next_working(params.start_date)
     end_year, days = _calendar(start, _bound_minutes(tasks, plan, links))
     ranges = _ranges(rng, plan)
     work = [r["uid"] for r in ranges]

@@ -31,18 +31,30 @@ def test_block_is_repeatable() -> None:
 
 
 def test_project_lines_by_hand() -> None:
-    lines = load().project_lines()
-    for want in (
+    assert load().project_lines() == [
+        "",
+        "Project example: seed 42, 50 tasks.",
+        "",
         "- tasks: 50",
         "- summary tasks: 3",
         "- milestones: 3",
+        "- links: 76",
+        "- FS links: 65",
+        "- SS links: 8",
+        "- FF links: 2",
+        "- SF links: 1",
+        "- positive lags: 11",
+        "- negative lags: 2",
+        "- holiday exceptions: 43",
+        "- holidays listed through year: 2028",
         "- ranges: 44",
         "- risks: 3",
-        "- task limit: 8 to 5000",
-        "- risks at the task limit: 200",
         "- same seed gives same bytes: PASS",
-    ):
-        assert want in lines
+        "- task limit: 8 to 5000",
+        "- start date limit: 2000-01-01 to 2099-12-31",
+        "- links at the task limit: 9453",
+        "- risks at the task limit: 200",
+    ]
 
 
 def test_replace_block() -> None:

@@ -228,9 +228,9 @@ def write_workforce(ds: WorkforceDataset, out: Path, force: bool = False) -> Non
     _prepare(out, force, known_files())
     for name, cols in TABLES.items():
         _write_csv(out / f"{name}.csv", cols, ds.tables[name])
-    (out / "data_dictionary.md").write_text(_dictionary(), "utf-8")
+    (out / "data_dictionary.md").write_text(_dictionary(), "utf-8", newline="\n")
     text = README.format(version=__version__, disclaimer=DISCLAIMER, notice=NOTICE)
-    (out / "README.txt").write_text(text, "utf-8")
+    (out / "README.txt").write_text(text, "utf-8", newline="\n")
     written = [f"{t}.csv" for t in TABLES] + ["data_dictionary.md", "README.txt"]
     p = ds.params
     manifest = {
@@ -246,4 +246,6 @@ def write_workforce(ds: WorkforceDataset, out: Path, force: bool = False) -> Non
         "row_counts": {t: len(ds.tables[t]) for t in TABLES},
         "files": {n: _sha256(out / n) for n in sorted(written)},
     }
-    (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", "utf-8")
+    (out / "manifest.json").write_text(
+        json.dumps(manifest, indent=2) + "\n", "utf-8", newline="\n"
+    )

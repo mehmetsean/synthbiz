@@ -96,7 +96,7 @@ def read_coverage(path: Path) -> float:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         return float(data["totals"]["percent_covered"])
-    except (OSError, ValueError, KeyError, TypeError) as err:
+    except (OSError, ValueError, KeyError, TypeError, RecursionError) as err:
         raise SystemExit(f"cannot read coverage file {path}: {err!r}") from None
 
 
@@ -117,7 +117,7 @@ def read_tests(path: Path) -> tuple[int, int]:
 
 
 def main(args: list[str]) -> int:
-    if len(args) != 3:
+    if len(args) != 3 or not args[2].strip():
         raise SystemExit("usage: make_badges.py COVERAGE_JSON JUNIT_XML OUT_DIR")
     coverage = read_coverage(Path(args[0]))
     passed, failed = read_tests(Path(args[1]))
@@ -127,8 +127,8 @@ def main(args: list[str]) -> int:
     test_svg = make_badge(
         "tests", tests_text(passed, failed), tests_color(passed, failed)
     )
-    (out / "coverage.svg").write_text(cov_svg, encoding="utf-8")
-    (out / "tests.svg").write_text(test_svg, encoding="utf-8")
+    (out / "coverage.svg").write_text(cov_svg, encoding="utf-8", newline="\n")
+    (out / "tests.svg").write_text(test_svg, encoding="utf-8", newline="\n")
     return 0
 
 

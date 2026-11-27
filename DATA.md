@@ -18,7 +18,8 @@ company, a public dataset or an outside list.
   `src/synthbiz/names.py`.
 - US federal holidays: computed by rule in `src/synthbiz/dates.py` (for example
   third Monday of January, last Monday of May, observed on the nearest weekday when
-  the date falls on a weekend). No outside calendar file is used.
+  the date falls on a weekend). No outside calendar file is used. The finance
+  tables apply Juneteenth in every year. Project schedules apply it from 2021.
 
 ## What is not in the data
 

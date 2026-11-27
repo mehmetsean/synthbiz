@@ -225,7 +225,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         print("README numbers match")
         return 0
-    path.write_text(new, encoding="utf-8")
+    path.write_text(new, encoding="utf-8", newline="\n")
     print("README numbers updated")
     return 0
 

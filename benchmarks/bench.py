@@ -121,7 +121,9 @@ def main() -> int:
     rows = [run_case(s, m, args.repeat) for s in sizes for m in months]
     print(table(rows))
     if args.json:
-        Path(args.json).write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8")
+        Path(args.json).write_text(
+            json.dumps(rows, indent=2) + "\n", encoding="utf-8", newline="\n"
+        )
     bad = [r for r in rows if not r["same_as_reference"]]
     for r in bad:
         print(f"MISMATCH: {r['size']} {r['months']} months", file=sys.stderr)

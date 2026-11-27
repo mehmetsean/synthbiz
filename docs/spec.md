@@ -1,19 +1,18 @@
 # synthbiz spec (v0.1 to v0.6)
 
 ## Problem
-People who build finance and operations analytics need test data that behaves like one company's books: linked tables that reconcile, with known problems planted in them. Real ledgers cannot be shared. Row-by-row fake-data tools such as Faker generate each row on its own, so nothing ties an invoice to a ledger posting or a payment to a bank statement. Fixed sample datasets cannot be resized or reseeded. Without labels, nobody can measure whether a duplicate-payment check or a bank match actually works.
+People who build finance and operations analytics need test data that behaves like one company's books: linked tables that reconcile, with known problems planted in them. Real ledgers cannot be shared. Fixed sample datasets cannot be resized or reseeded. Without labels, nobody can measure whether a duplicate-payment check or a bank match actually works.
 
 ## User
 - Data and analytics engineers who test finance pipelines, reconciliations and dashboards.
 - Instructors and students in accounting analytics and data analytics courses.
 - People building anomaly detection or matching tools who need labeled ground truth.
-- The later repos in this program (ledgercheck, capplan, triage-lab, cashplan13), which read synthbiz output.
 
 ## MVP scope
 Python 3.11+ library and CLI: `synthbiz generate --seed 42 --months 12 --out data/` and `synthbiz check data/`.
 One fictional company: a small manufacturer with a size setting (vendors, customers, invoice volume).
 
-v0.1, finance core (what ledgercheck needs first):
+v0.1, finance core:
 - Tables: chart_of_accounts, journal_lines, vendors, ap_invoices, ap_payments, customers, ar_invoices, ar_receipts, bank_transactions, reconciling_items.
 - `check` verifies: every journal entry balances; AP and AR subledgers tie to their control accounts at each month end; bank balance ties to GL cash after listed reconciling items; every key and label points to a real row; dates and periods are consistent; files match manifest.json.
 - Anomalies injected at a set rate, each written to labels.csv (table, row id, type, details): exact, near-duplicate (vendor name variants) and typo-duplicate (invoice number with one typo) payments, invoices split under an approval limit, round-amount entries, weekend and holiday postings, postings by an unusual user, missing approval, out-of-period entries.
@@ -22,9 +21,9 @@ v0.1, finance core (what ledgercheck needs first):
 
 v0.2, realism: legitimate unlabeled background rows, typo duplicate payments, and the approval limit in manifest.json (so rules can be scored on false alarms).
 v0.3, budget, cash flow and workforce (released): budget and cash flow option: `--budget-and-cash-flow` adds a budget_lines table with planted, labeled variances and fixed asset, loan and equity entries for a cash flow statement. See ADR 18.
-v0.4, project schedules: `synthbiz project` writes a seeded project network as Microsoft Project XML (MSPDI) with four link types, lags, one calendar with holidays, summary tasks, milestones and costs, plus ranges.csv and risks.csv. See ADR 19.
-v0.5, assets and maintenance (planned, not built): assets, depreciation and maintenance work orders, tied to the GL and to AP for parts (for capplan).
-v0.6, tickets and inventory (planned, not built): help-desk tickets linked to vendors, customers and assets (for triage-lab); inventory and purchase orders.
+v0.4, project schedules (built, not released yet): `synthbiz project` writes a seeded project network as Microsoft Project XML (MSPDI) with four link types, lags, one calendar with holidays, summary tasks, milestones and costs, plus ranges.csv and risks.csv. The MSPDI layout file has not been opened in Microsoft Project. See ADR 19.
+v0.5, assets and maintenance (planned, not built): assets, depreciation and maintenance work orders, tied to the GL and to AP for parts.
+v0.6, tickets and inventory (planned, not built): help-desk tickets linked to vendors, customers and assets; inventory and purchase orders.
 Workforce tables: staff, shifts, demand and availability for shift scheduling tools, as a separate `synthbiz workforce` command. See ADR 17.
 
 ## Non-goals
@@ -42,7 +41,7 @@ Workforce tables: staff, shifts, demand and availability for shift scheduling to
 - Property tests with hypothesis across random seeds for every `check` rule.
 - Golden test: the seed 42 checksum is stable within a minor version.
 - Label tests: injected count equals label count, and every label points to a real row.
-- scripts/reproduce_readme.py regenerates every number quoted in the README.
+- scripts/reproduce_readme.py regenerates the numbers block in the README.
 - CI: ruff, mypy, pytest, and at least 90 percent line coverage on the core package.
 
 ## License
