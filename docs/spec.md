@@ -21,7 +21,7 @@ v0.1, finance core:
 
 v0.2, realism: legitimate unlabeled background rows, typo duplicate payments, and the approval limit in manifest.json (so rules can be scored on false alarms).
 v0.3, budget, cash flow and workforce (released): budget and cash flow option: `--budget-and-cash-flow` adds a budget_lines table with planted, labeled variances and fixed asset, loan and equity entries for a cash flow statement. See ADR 18.
-v0.4, project schedules (built, not released yet): `synthbiz project` writes a seeded project network as Microsoft Project XML (MSPDI) with four link types, lags, one calendar with holidays, summary tasks, milestones and costs, plus ranges.csv and risks.csv. The MSPDI layout file has not been opened in Microsoft Project. See ADR 19.
+v0.4, project schedules (built, not released yet): `synthbiz project` writes a seeded project network as Microsoft Project XML (MSPDI) with four link types, lags (a lead is never longer than the predecessor's duration), one calendar with holidays, summary tasks, milestones and costs, plus ranges.csv and risks.csv. The file has not been opened in Microsoft Project. See ADR 19.
 v0.5, assets and maintenance (planned, not built): assets, depreciation and maintenance work orders, tied to the GL and to AP for parts.
 v0.6, tickets and inventory (planned, not built): help-desk tickets linked to vendors, customers and assets; inventory and purchase orders.
 Workforce tables: staff, shifts, demand and availability for shift scheduling tools, as a separate `synthbiz workforce` command. See ADR 17.

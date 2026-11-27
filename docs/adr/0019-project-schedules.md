@@ -16,7 +16,8 @@ Network:
 - Every link goes from an earlier layer to a later layer. So the graph with one node per task, and a start node and a finish node per summary task, has no cycle. A summary link goes from one phase to the next. The first pair of phases always has one and later pairs get one by chance. By pair number its form rotates: summary to summary, summary to a first layer task, first layer task to summary. Summary links are FS or SS.
 - Every work task has an FS or FF successor. Work tasks that would lack one, and the last layer of a phase, link FS to the milestone.
 - The first link into a work task is FS or SS, so no task has only FF or SF predecessors. Later links into the same task can be of any type.
-- Four links are picked to hold the four types, with FF and SF among the later links. The picked FS link gets a negative lag and the picked SS link a positive lag.
+- Four links are picked to hold the four types, with FF and SF among the later links. The picked FS link comes from a work task and gets a lead of one day, or of the predecessor's duration if that is shorter. The picked SS link gets a positive lag.
+- A lead (negative lag) is never longer than the predecessor's duration, and a link from a milestone has no lead. So in a forward pass over the links, with summary tasks expanded, no task starts before the project start date. `tests/test_project.py` has its own forward pass for this.
 
 MSPDI names and units, read on 2026-11-27:
 
@@ -29,10 +30,13 @@ MSPDI names and units, read on 2026-11-27:
 
 The schema file is not copied into the repo. The tests compare the XML with names, order and codes written by hand. They do not validate against the schema. The file has not been opened in Microsoft Project.
 
+Costs: A work task's Cost is FixedCost plus a day rate times its duration in days. The file holds no resources or assignments, so a tool that recomputes cost may get other totals. The day rate is not written to any file. A milestone's Cost is its FixedCost, and a summary task's Cost is the sum of its tasks.
+
 Sidecar files:
 
 - ranges.csv gives min, most_likely and max as whole percent of plan duration. The unit is written in README.txt, data_dictionary.md and manifest.json, and the header has no unit column.
 - risks.csv gives each event a probability, one distribution name for both impacts, a triple in working minutes, a triple in cents, the affected task UIDs joined by `|` and an optional group name.
+- A group name is on at least two rows of its file. A name that only one row drew is left empty.
 
 Calendar: the start date moves to a working day. Juneteenth is a holiday from 2021, the year of the law that added it: https://www.govinfo.gov/app/details/PLAW-117publ17 . A bound on the longest path adds, per layer, the longest duration and the largest positive lag into the layer, plus the largest positive lag into each summary task. Let D be that bound in whole days, rounded down, plus one. Holidays are listed from the start through the first year by whose end there are at least 3 D working days, and for one year more.
 

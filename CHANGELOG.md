@@ -6,7 +6,7 @@ All notable changes are listed here. The format follows Keep a Changelog.
 
 ### Added
 
-- Project schedules: `synthbiz project` writes project.xml (Microsoft Project XML), ranges.csv, risks.csv and a manifest, from `--seed`, `--tasks` and `--start-date`. The plan has summary tasks, milestones, FS, SS, FF and SF links with lags, one calendar with US federal holidays and costs. Synthetic data. The MSPDI layout file has not been opened in Microsoft Project. See docs/adr/0019-project-schedules.md.
+- Project schedules: `synthbiz project` writes project.xml (Microsoft Project XML), ranges.csv, risks.csv and a manifest, from `--seed`, `--tasks` and `--start-date`. The plan has summary tasks, milestones, FS, SS, FF and SF links with lags, one calendar with US federal holidays and costs. A lead is never longer than the predecessor's duration, and a link from a milestone has no lead. A correlation group name is on at least two rows. The file holds no resources or assignments. Synthetic data. The file has not been opened in Microsoft Project. See docs/adr/0019-project-schedules.md.
 - `names.phase_name` and `names.task_name`.
 
 ### Changed
@@ -19,7 +19,8 @@ All notable changes are listed here. The format follows Keep a Changelog.
 - With `--force`, `generate` and `workforce` refuse a known output name that is not a regular file or a link before they change anything.
 - An empty `--out` value and an empty `check` folder are refused. scripts/make_badges.py refuses an empty output folder.
 - A deeply nested manifest.json or coverage file gives a clean refusal.
-- Text files are written with LF line ends on every system.
+- Text files written by synthbiz use LF line ends.
+- Every command prints control characters, and characters that the output encoding cannot show, as escapes. A path outside ASCII no longer ends in a traceback on an ASCII output.
 
 ## 0.3.0 - 2026-11-24
 

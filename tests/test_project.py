@@ -135,6 +135,47 @@ def check_network(ds: ProjectDataset, tasks: int) -> None:
     assert led == started
 
 
+def forward_starts(ds: ProjectDataset) -> dict[int, int]:
+    kids = children(ds)
+    parent = {kid: head for head, group in kids.items() for kid in group}
+    start: dict[int, int] = {}
+    finish: dict[int, int] = {}
+    for t in ds.tasks:
+        if t.summary:
+            continue
+        bounds = []
+        for x in ds.links:
+            if x.succ_uid not in (t.uid, parent[t.uid]):
+                continue
+            group = kids.get(x.pred_uid, [x.pred_uid])
+            if x.kind[0] == "S":
+                time = min(start[u] for u in group)
+            else:
+                time = max(finish[u] for u in group)
+            time += x.lag_minutes
+            if x.kind[1] == "F":
+                time -= t.duration_minutes
+            bounds.append(time)
+        # no clamp
+        start[t.uid] = max(bounds) if bounds else 0
+        finish[t.uid] = start[t.uid] + t.duration_minutes
+    return start
+
+
+def check_leads(ds: ProjectDataset) -> None:
+    assert min(forward_starts(ds).values()) >= 0
+    duration = {t.uid: t.duration_minutes for t in ds.tasks if not t.summary}
+    for x in ds.links:
+        if x.lag_minutes < 0:
+            assert -x.lag_minutes <= duration[x.pred_uid]
+
+
+def check_groups(ds: ProjectDataset) -> None:
+    for rows in (ds.ranges, ds.risks):
+        sizes = Counter(r["corr_group"] for r in rows if r["corr_group"])
+        assert all(n >= 2 for n in sizes.values())
+
+
 def check_tasks(ds: ProjectDataset) -> None:
     by_uid = {t.uid: t for t in ds.tasks}
     for parent, kids in children(ds).items():
@@ -215,8 +256,10 @@ def test_properties_for_any_seed_and_size(seed: int, tasks: int) -> None:
     ds = generate_project(ProjectParams(seed=seed, tasks=tasks))
     assert ds == generate_project(ProjectParams(seed=seed, tasks=tasks))
     check_network(ds, tasks)
+    check_leads(ds)
     check_tasks(ds)
     check_tables(ds)
+    check_groups(ds)
 
 
 @settings(max_examples=8, deadline=None)
@@ -236,14 +279,88 @@ def test_smallest_sizes_over_many_seeds() -> None:
         for seed in range(100):
             ds = make(seed, tasks)
             check_network(ds, tasks)
+            check_leads(ds)
             check_tasks(ds)
             check_tables(ds)
+            check_groups(ds)
+
+
+@pytest.mark.parametrize(
+    ("tasks", "seeds"),
+    [*((n, 300) for n in range(8, 21)), (60, 200), (500, 20), (MAX_TASKS, 1)],
+)
+def test_no_start_before_the_project_start(tasks: int, seeds: int) -> None:
+    for seed in range(seeds):
+        ds = make(seed, tasks)
+        check_leads(ds)
+        check_groups(ds)
+        assert {x.kind for x in ds.links} == {"FS", "SS", "FF", "SF"}
+        assert any(x.lag_minutes > 0 for x in ds.links)
+        assert any(x.lag_minutes < 0 for x in ds.links)
+
+
+def test_half_day_predecessor_cuts_the_lead() -> None:
+    # reported case
+    ds = make(0, 8)
+    check_leads(ds)
+    seen = set()
+    for seed in range(300):
+        ds = make(seed, 8)
+        duration = {t.uid: t.duration_minutes for t in ds.tasks}
+        for x in ds.links:
+            if x.lag_minutes < 0:
+                seen.add((duration[x.pred_uid], -x.lag_minutes))
+    assert (240, 240) in seen
+    assert {lead for _, lead in seen} == {240, 480, 960}
+
+
+@pytest.mark.parametrize(
+    ("lag", "kind", "start"),
+    [(-480, "FS", 0), (-720, "FS", -240), (0, "SS", 0), (240, "FF", -240)],
+)
+def test_forward_pass_by_hand(lag: int, kind: str, start: int) -> None:
+    ds = make(42, 8)
+    ds.tasks[1].duration_minutes = 480
+    ds.tasks[2].duration_minutes = 960
+    ds.links = [Link(2, 3, kind, lag)]
+    assert forward_starts(ds)[3] == start
+
+
+def test_forward_pass_expands_summaries() -> None:
+    ds = make(42, 8)
+    for uid, minutes in ((2, 480), (3, 960), (6, 240), (7, 240)):
+        ds.tasks[uid - 1].duration_minutes = minutes
+    ds.links = [Link(2, 3, "FS", 0), Link(1, 5, "FS", 0)]
+    starts = forward_starts(ds)
+    assert [starts[u] for u in (6, 7, 8)] == [1440, 1440, 1440]
+
+
+def test_work_cost_is_fixed_plus_day_rate() -> None:
+    rates = []
+    for seed in range(20):
+        for t in make(seed, 100).tasks:
+            if t.summary or t.milestone:
+                continue
+            rate, rest = divmod(
+                (t.cost_cents - t.fixed_cost_cents) * 480, t.duration_minutes
+            )
+            assert rest == 0 and rate % 100 == 0
+            rates.append(rate)
+    assert 40_000 <= min(rates) and max(rates) <= 400_000
+
+
+def test_single_member_groups_are_blank() -> None:
+    rows = [{"corr_group": g} for g in ("G1", "", "G2", "G1", "G3")]
+    project._blank_singles(rows)
+    assert [r["corr_group"] for r in rows] == ["G1", "", "", "G1", ""]
 
 
 def test_largest_size() -> None:
     ds = make(1, MAX_TASKS)
     assert len(ds.tasks) == 5000
     check_network(ds, 5000)
+    check_leads(ds)
+    check_groups(ds)
     check_tasks(ds)
     check_tables(ds)
     check_calendar(ds)

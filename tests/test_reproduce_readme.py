@@ -38,9 +38,9 @@ def test_project_lines_by_hand() -> None:
         "- tasks: 50",
         "- summary tasks: 3",
         "- milestones: 3",
-        "- links: 76",
+        "- links: 75",
         "- FS links: 65",
-        "- SS links: 8",
+        "- SS links: 7",
         "- FF links: 2",
         "- SF links: 1",
         "- positive lags: 11",
@@ -52,7 +52,7 @@ def test_project_lines_by_hand() -> None:
         "- same seed gives same bytes: PASS",
         "- task limit: 8 to 5000",
         "- start date limit: 2000-01-01 to 2099-12-31",
-        "- links at the task limit: 9453",
+        "- links at the task limit: 9470",
         "- risks at the task limit: 200",
     ]
 

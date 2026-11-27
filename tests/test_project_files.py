@@ -324,13 +324,50 @@ def test_csv_headers_and_rows(tmp_path: Path) -> None:
         assert rows(tmp_path / f"{name}.csv") == want
 
 
+COST_NOTE = (
+    "A work task's Cost is FixedCost plus a day rate times its duration in days. "
+    "The file holds no resources or assignments, so a tool that recomputes cost "
+    "may get other totals."
+)
+LEAD_NOTE = (
+    "A lead (negative lag) is never longer than the predecessor's duration, and "
+    "a link from a milestone has no lead."
+)
+
+
+@pytest.mark.parametrize("name", ["README.md", "docs/adr/0019-project-schedules.md"])
+def test_docs_state_cost_and_lead_rules(name: str) -> None:
+    root = Path(__file__).resolve().parent.parent
+    flat = " ".join((root / name).read_text("utf-8").split())
+    assert COST_NOTE in flat
+    assert LEAD_NOTE in flat
+
+
+def test_unit_claim_always_names_its_limit() -> None:
+    root = Path(__file__).resolve().parent.parent
+    paths = [root / "README.md", root / "CHANGELOG.md", root / "DATA.md"]
+    paths += sorted((root / "docs").rglob("*.md"))
+    paths += sorted((root / "src").rglob("*.py"))
+    seen = 0
+    for path in paths:
+        flat = " ".join(path.read_text("utf-8").split())
+        for tail in flat.split("does not state the unit")[1:]:
+            assert re.match(r"( of Cost and FixedCost)? on the pages named", tail)
+            seen += 1
+    assert seen >= 3
+
+
 def test_dictionary_notice_and_caveats(tmp_path: Path) -> None:
     write_project(make(), tmp_path)
     body = (tmp_path / "data_dictionary.md").read_text("utf-8")
     assert f"Copyright (c) 2026 Mehmet Tuzunkan. {NOTICE}" in body.splitlines()
     flat = " ".join(body.split())
     for sentence in (
-        "hundredths of the currency unit (cents). Microsoft does not state the unit.",
+        "hundredths of the currency unit (cents). Microsoft does not state the unit "
+        "on the pages named in docs/adr/0019-project-schedules.md of synthbiz.",
+        COST_NOTE,
+        LEAD_NOTE,
+        "A group name is on at least two rows.",
         "The file has not been opened in Microsoft Project.",
         "For uniform, min and max are the bounds. most_likely is written but not used.",
         "Juneteenth from 2021",
@@ -351,7 +388,7 @@ def test_same_bytes_across_processes(tmp_path: Path) -> None:
 
 
 GOLDEN = {
-    "project.xml": ("3137523085c09df3bf7d7acec6b0bf3988485510c01895c2b4acb5675620284e"),
+    "project.xml": ("f02f9dc2d905a687013d2977883084241f27cc232d9a3b2a1045b85dd4791813"),
     "ranges.csv": ("57c44f133b5df4f781558411b64656d86a9c3f06137d5e9390f90fc9fa4ad32a"),
     "risks.csv": ("98e616ec7e6c02411c83065b6f8380b7c7fc9b8fffae00645a22429d90b1123a"),
 }
@@ -383,10 +420,20 @@ def test_golden_seed_42(tmp_path: Path) -> None:
     links = every(root, "Tasks/Task/PredecessorLink")
     kinds = Counter(text(x, "Type") for x in links)
     # README numbers
-    assert len(links) == 76
-    assert kinds == {"1": 65, "3": 8, "0": 2, "2": 1}
+    assert len(links) == 75
+    assert kinds == {"1": 65, "3": 7, "0": 2, "2": 1}
     assert sum(int(text(x, "LinkLag")) > 0 for x in links) == 11
-    assert sum(int(text(x, "LinkLag")) < 0 for x in links) == 2
+    leads = {}
+    for t in tasks:
+        for x in every(t, "PredecessorLink"):
+            if int(text(x, "LinkLag")) < 0:
+                pred = tasks[int(text(x, "PredecessorUID")) - 1]
+                leads[text(t, "UID")] = (text(x, "LinkLag"), text(pred, "Duration"))
+    # one day
+    assert leads == {
+        "13": ("-4800", "PT96H0M0S"),
+        "27": ("-4800", "PT56H0M0S"),
+    }
     assert len(every(root, "Calendars/Calendar/Exceptions/Exception")) == 43
     first = every(root, "Calendars/Calendar/Exceptions/Exception")[0]
     assert text(first, "Name") == "Martin Luther King Jr. Day"
@@ -556,7 +603,6 @@ def test_force_replaces_a_link_not_its_target(tmp_path: Path, writer: str) -> No
 @pytest.mark.parametrize("writer", sorted(WRITERS))
 def test_force_refuses_odd_entries_first(
     tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
     writer: str,
     last: bool,
     kind: str,
@@ -570,10 +616,14 @@ def test_force_refuses_odd_entries_first(
         odd.mkdir()
     else:
         os.mkfifo(odd)
-    assert main([*command, "--out", str(tmp_path), "--force"]) == 1
+    full = [sys.executable, "-m", "synthbiz", *command]
+    full += ["--out", str(tmp_path), "--force"]
+    # no hang
+    done = subprocess.run(full, capture_output=True, text=True, timeout=60)
+    assert done.returncode == 1
     want = f"Error: {odd} is not a regular file or a link, "
     want += "move it or use another folder\n"
-    assert capsys.readouterr().out == want
+    assert done.stdout == want
     assert sorted(p.name for p in tmp_path.iterdir()) == sorted([kept, name])
     assert (tmp_path / kept).read_text("utf-8") == "old"
 

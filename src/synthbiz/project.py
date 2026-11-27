@@ -1,6 +1,7 @@
 """Project schedule."""
 
 import random
+from collections import Counter
 from dataclasses import dataclass
 from datetime import date, timedelta
 from math import isqrt
@@ -169,16 +170,20 @@ def _all_layers(plan: list[Phase]) -> list[list[int]]:
     return [layer for layers in plan for layer in layers]
 
 
-def _lag(rng: random.Random, kind: str) -> int:
+def _lag(rng: random.Random, kind: str, pred_minutes: int) -> int:
     x = rng.random()
     if x < 0.75:
         return 0
     if x < 0.93 or kind != "FS":
         return rng.randint(1, 5) * DAY_MINUTES
-    return -rng.randint(1, 2) * DAY_MINUTES
+    # bounded lead
+    return -min(rng.randint(1, 2) * DAY_MINUTES, pred_minutes)
 
 
-def _typed_links(rng: random.Random, pairs: list[tuple[int, int]]) -> list[Link]:
+def _typed_links(
+    rng: random.Random, pairs: list[tuple[int, int]], tasks: list[Task]
+) -> list[Link]:
+    minutes = {t.uid: t.duration_minutes for t in tasks}
     seen: set[int] = set()
     extra = []
     for i, (_, succ) in enumerate(pairs):
@@ -187,17 +192,20 @@ def _typed_links(rng: random.Random, pairs: list[tuple[int, int]]) -> list[Link]
         seen.add(succ)
     forced = dict(zip(rng.sample(extra, 2), ("FF", "SF"), strict=True))
     rest = [i for i in range(len(pairs)) if i not in forced]
-    forced.update(zip(rng.sample(rest, 2), ("FS", "SS"), strict=True))
+    # needs duration
+    lead = rng.choice([i for i in rest if minutes[pairs[i][0]] > 0])
+    forced[lead] = "FS"
+    forced[rng.choice([i for i in rest if i != lead])] = "SS"
     spare = set(extra)
     links = []
     for i, (pred, succ) in enumerate(pairs):
         # first link
         size = len(LINK_KINDS) if i in spare else START_KINDS
         kind = forced.get(i) or rng.choices(LINK_KINDS[:size], KIND_WEIGHTS[:size])[0]
-        lag = _lag(rng, kind)
+        lag = _lag(rng, kind, minutes[pred])
         # guaranteed lags
         if i in forced and kind == "FS":
-            lag = -DAY_MINUTES
+            lag = -min(DAY_MINUTES, minutes[pred])
         if i in forced and kind == "SS":
             lag = 2 * DAY_MINUTES
         links.append(Link(pred, succ, kind, lag))
@@ -314,6 +322,13 @@ def _ranges(rng: random.Random, plan: list[Phase]) -> list[dict[str, Any]]:
     return rows
 
 
+def _blank_singles(rows: list[dict[str, Any]]) -> None:
+    sizes = Counter(r["corr_group"] for r in rows)
+    for r in rows:
+        if sizes[r["corr_group"]] == 1:
+            r["corr_group"] = ""
+
+
 def _triple(rng: random.Random, step: int, top: int) -> tuple[int, int, int]:
     low = step * rng.randint(0, top)
     mid = low + step * rng.randint(1, top)
@@ -347,7 +362,7 @@ def generate_project(params: ProjectParams) -> ProjectDataset:
         )
     rng = random.Random(params.seed)
     tasks, plan = _outline(rng, params.tasks)
-    links = _typed_links(rng, _work_pairs(rng, plan))
+    links = _typed_links(rng, _work_pairs(rng, plan), tasks)
     links += _milestone_links(plan, links)
     links += _summary_links(rng, plan)
     links.sort(key=lambda x: (x.succ_uid, x.pred_uid))
@@ -356,4 +371,6 @@ def generate_project(params: ProjectParams) -> ProjectDataset:
     ranges = _ranges(rng, plan)
     work = [r["uid"] for r in ranges]
     risks = _risks(rng, work, min(max(3, params.tasks // 25), 200))
+    _blank_singles(ranges)
+    _blank_singles(risks)
     return ProjectDataset(params, start, end_year, days, tasks, links, ranges, risks)

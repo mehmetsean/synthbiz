@@ -54,12 +54,13 @@ A third generator writes a synthetic project schedule for scheduling and schedul
 It writes project.xml (Microsoft Project XML, known as MSPDI), ranges.csv, risks.csv, data_dictionary.md, README.txt and manifest.json. All of it is synthetic data. The task count is 8 to 5000 and counts summary tasks and milestones. The start date is 2000-01-01 to 2099-12-31. A start date that is not a working day moves to the next one. The seed is 0 or more.
 
 - The plan has phases. Each phase is a summary task over layers of work tasks and ends in a milestone.
-- Each generated plan holds all four link types, with positive and negative lags. Negative lags are on FS links only. Links on summary tasks are FS or SS. A task with predecessors has at least one FS or SS predecessor. Lags are working time.
+- Each generated plan holds all four link types, with positive and negative lags. Negative lags are on FS links only. A lead (negative lag) is never longer than the predecessor's duration, and a link from a milestone has no lead. So a forward pass over the links, with summary tasks expanded, starts no task before the project start date. Links on summary tasks are FS or SS. A task with predecessors has at least one FS or SS predecessor. Lags are working time.
 - Links go from an earlier layer to a later one, so the network has no cycle, also with summary tasks expanded.
 - One calendar: Monday to Friday, 08:00 to 12:00 and 13:00 to 17:00, with US federal holidays as exceptions through the year in manifest.json. Juneteenth is listed from 2021. Dates after the last listed year have no holiday exceptions.
 - ranges.csv (uid, dist, min, most_likely, max, corr_group) has one row per work task. The values are percent of plan duration.
 - risks.csv (risk_id, probability, impact_dist, min_minutes, most_likely_minutes, max_minutes, min_cents, most_likely_cents, max_cents, affected_uids, corr_group) holds risk events with impacts in working minutes and in cents.
-- FixedCost and Cost in project.xml are in hundredths of the currency unit (cents). Microsoft does not state the unit. docs/adr/0019-project-schedules.md names the source used.
+- A corr_group name in ranges.csv or risks.csv is on at least two rows of that file. Empty means no group.
+- FixedCost and Cost in project.xml are in hundredths of the currency unit (cents). Microsoft does not state the unit on the pages named in docs/adr/0019-project-schedules.md, which also names the source used.
 - The same seed, task count, start date and version give the same bytes.
 
 `tests/test_project.py` checks the network, calendar and table rules across seeds, and `tests/test_project_files.py` checks the files, with the link type codes and lag units written out by hand. Run both with `pytest tests/test_project.py tests/test_project_files.py --no-cov`.
@@ -240,6 +241,7 @@ The background step runs after the planted anomalies. Every journal, invoice, pa
 - Holidays are US federal holidays only. The finance tables treat Juneteenth as a holiday in every year, also before 2021, the year of the law that added it (https://www.govinfo.gov/app/details/PLAW-117publ17). Project schedules list it from 2021.
 - No multi-currency, payroll or tax.
 - Amounts, timing and rates are not real-world statistics. This includes project durations, costs, ranges and risks.
+- Project schedules: A work task's Cost is FixedCost plus a day rate times its duration in days. The file holds no resources or assignments, so a tool that recomputes cost may get other totals.
 - Anomaly types are planted in a fixed rotation, so a low rate or a short run will
   not include all ten types. The example below has six.
 - Background rows are generated for the same fictional company only. They are one
@@ -349,9 +351,9 @@ Project example: seed 42, 50 tasks.
 - tasks: 50
 - summary tasks: 3
 - milestones: 3
-- links: 76
+- links: 75
 - FS links: 65
-- SS links: 8
+- SS links: 7
 - FF links: 2
 - SF links: 1
 - positive lags: 11
@@ -363,7 +365,7 @@ Project example: seed 42, 50 tasks.
 - same seed gives same bytes: PASS
 - task limit: 8 to 5000
 - start date limit: 2000-01-01 to 2099-12-31
-- links at the task limit: 9453
+- links at the task limit: 9470
 - risks at the task limit: 200
 <!-- numbers:end -->
 

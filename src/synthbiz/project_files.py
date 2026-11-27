@@ -48,9 +48,13 @@ One calendar, Monday to Friday, 08:00 to 12:00 and 13:00 to 17:00, with US
 federal holidays as exceptions (Juneteenth from 2021). Durations are working
 time. LinkLag is in tenths of a minute. Link Type is 0 for FF, 1 for FS, 2 for
 SF and 3 for SS. FixedCost and Cost are in hundredths of the currency unit
-(cents). Microsoft does not state the unit. Summary tasks have no Duration. No
-task has a Start or Finish date. The file has not been opened in Microsoft
-Project.
+(cents). Microsoft does not state the unit on the pages named in
+docs/adr/0019-project-schedules.md of synthbiz. A work task's Cost is FixedCost
+plus a day rate times its duration in days. The file holds no resources or
+assignments, so a tool that recomputes cost may get other totals. A lead
+(negative lag) is never longer than the predecessor's duration, and a link from
+a milestone has no lead. Summary tasks have no Duration. No task has a Start or
+Finish date. The file has not been opened in Microsoft Project.
 
 ## ranges.csv
 
@@ -62,8 +66,8 @@ project.xml.
 - `dist`: triangular, pert or uniform. For uniform, min and max are the bounds.
   most_likely is written but not used.
 - `min`, `most_likely`, `max`: whole percent.
-- `corr_group`: tasks with the same group name are meant to move together. Empty
-  means no group.
+- `corr_group`: tasks with the same group name are meant to move together. A
+  group name is on at least two rows. Empty means no group.
 
 ## risks.csv
 
@@ -78,8 +82,8 @@ One row per risk event.
   added to every affected task.
 - `min_cents`, `most_likely_cents`, `max_cents`: cost of the event in cents.
 - `affected_uids`: task UIDs joined by |.
-- `corr_group`: risks with the same group name are meant to move together. Empty
-  means no group.
+- `corr_group`: risks with the same group name are meant to move together. A
+  group name is on at least two rows. Empty means no group.
 """
 
 DATA_FILES = [

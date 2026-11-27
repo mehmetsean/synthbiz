@@ -1,6 +1,7 @@
 """Command line entry point."""
 
 import argparse
+import sys
 from datetime import date
 from pathlib import Path
 
@@ -12,6 +13,12 @@ from .project_files import write_project
 from .workforce import WorkforceParams, generate_workforce, write_workforce
 
 MAX_SHOWN = 5
+
+
+def _say(text: str) -> None:
+    shown = "".join(c if c.isprintable() else ascii(c)[1:-1] for c in text)
+    encoding = sys.stdout.encoding or "utf-8"
+    print(shown.encode(encoding, "backslashreplace").decode(encoding))
 
 
 def _folder(text: str) -> str:
@@ -34,14 +41,14 @@ def _generate(args: argparse.Namespace) -> int:
         ds = generate(params)
         write_dataset(ds, Path(args.out), args.format, args.force)
     except (ValueError, OSError) as e:
-        print(f"Error: {e}")
+        _say(f"Error: {e}")
         return 1
     rows = sum(len(t) for t in ds.tables.values())
-    print(f"Wrote {len(ds.tables)} tables ({rows} rows) to {args.out}")
-    print(f"Planted {ds.anomaly_count} anomalies, listed in labels.csv")
+    _say(f"Wrote {len(ds.tables)} tables ({rows} rows) to {args.out}")
+    _say(f"Planted {ds.anomaly_count} anomalies, listed in labels.csv")
     if "budget_lines" in ds.tables:
         n = sum(1 for lab in ds.labels if lab["table"] == "budget_lines")
-        print(f"Planted {n} budget variances, listed in labels.csv")
+        _say(f"Planted {n} budget variances, listed in labels.csv")
     return 0
 
 
@@ -53,10 +60,10 @@ def _workforce(args: argparse.Namespace) -> int:
         ds = generate_workforce(params)
         write_workforce(ds, Path(args.out), args.force)
     except (ValueError, OSError) as e:
-        print(f"Error: {e}")
+        _say(f"Error: {e}")
         return 1
     rows = sum(len(t) for t in ds.tables.values())
-    print(f"Wrote {len(ds.tables)} tables ({rows} rows) to {args.out}")
+    _say(f"Wrote {len(ds.tables)} tables ({rows} rows) to {args.out}")
     return 0
 
 
@@ -66,9 +73,9 @@ def _project(args: argparse.Namespace) -> int:
         ds = generate_project(params)
         write_project(ds, Path(args.out), args.force)
     except (ValueError, OSError) as e:
-        print(f"Error: {e}")
+        _say(f"Error: {e}")
         return 1
-    print(
+    _say(
         f"Wrote a project with {len(ds.tasks)} tasks, {len(ds.links)} links "
         f"and {len(ds.risks)} risks to {args.out}"
     )
@@ -81,37 +88,37 @@ def _check(args: argparse.Namespace) -> int:
         tables, labels = read_dataset(folder)
         manifest = verify_manifest(folder)
     except (ValueError, OSError, KeyError) as e:
-        print(f"Error: {e}")
+        _say(f"Error: {e}")
         return 1
     try:
         results = run_checks(tables, labels)
     except (ValueError, KeyError, TypeError, IndexError) as e:
         msg = f"{type(e).__name__} {e}"
-        print("Error: could not run the checks: " + ascii(msg)[1:-1][:200])
+        _say("Error: could not run the checks: " + ascii(msg)[1:-1][:200])
         return 1
     skipped = 0
     if not (folder / "labels.csv").exists():
-        print("SKIP labels (no labels.csv in the folder)")
+        _say("SKIP labels (no labels.csv in the folder)")
         skipped += 1
     if manifest is None:
-        print("SKIP manifest (no manifest.json in the folder)")
+        _say("SKIP manifest (no manifest.json in the folder)")
         skipped += 1
     else:
         results.append(Result("manifest", not manifest, manifest))
     failed = False
     for r in results:
-        print(f"{'PASS' if r.ok else 'FAIL'} {r.rule}")
+        _say(f"{'PASS' if r.ok else 'FAIL'} {r.rule}")
         for m in r.messages[:MAX_SHOWN]:
-            print(f"  {m}")
+            _say(f"  {m}")
         if len(r.messages) > MAX_SHOWN:
-            print(f"  and {len(r.messages) - MAX_SHOWN} more")
+            _say(f"  and {len(r.messages) - MAX_SHOWN} more")
         failed = failed or not r.ok
     if failed:
-        print("Some checks failed")
+        _say("Some checks failed")
     elif skipped:
-        print(f"All checks passed, {skipped} skipped")
+        _say(f"All checks passed, {skipped} skipped")
     else:
-        print("All checks passed")
+        _say("All checks passed")
     return 1 if failed else 0
 
 
