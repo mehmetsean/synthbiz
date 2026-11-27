@@ -41,6 +41,19 @@ LAST_NAMES = [
     "Ives", "Jarvis", "Knox", "Lane", "Moss", "Nash", "Oakes", "Park",
     "Reed", "Shaw", "Tate", "Vance", "Wells", "Young",
 ]  # fmt: skip
+PHASE_NAMES = [
+    "Design", "Permits", "Site work", "Foundations", "Structure", "Envelope",
+    "Services", "Interiors", "Testing", "Handover",
+]  # fmt: skip
+TASK_VERBS = [
+    "Plan", "Order", "Deliver", "Prepare", "Install", "Assemble", "Inspect",
+    "Test", "Finish", "Document",
+]  # fmt: skip
+TASK_OBJECTS = [
+    "formwork", "rebar", "slabs", "steel frames", "roof panels", "windows",
+    "ductwork", "pipe runs", "cable trays", "wall boards", "floor tiles",
+    "door sets", "pump units", "control panels",
+]  # fmt: skip
 
 
 def _unique_names(
@@ -84,3 +97,12 @@ def person_names(rng: random.Random, count: int) -> list[str]:
     if count > len(combos):
         raise ValueError("too many names requested")
     return [f"{a} {b}" for a, b in rng.sample(combos, count)]
+
+
+def phase_name(rng: random.Random, number: int) -> str:
+    return f"Phase {number}: {rng.choice(PHASE_NAMES)}"
+
+
+def task_name(rng: random.Random) -> str:
+    verb = rng.choice(TASK_VERBS)
+    return f"{verb} {rng.choice(TASK_OBJECTS)}, area {rng.randint(1, 20)}"
